@@ -18,7 +18,11 @@ public class Bot
 		_receiverOptions = new ReceiverOptions
 		{
 			// https://core.telegram.org/bots/api#update
-			AllowedUpdates = new[] { UpdateType.Message },
+			AllowedUpdates = new[] 
+			{ 
+				UpdateType.Message, 
+				UpdateType.CallbackQuery 
+			},
 			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
 			ThrowPendingUpdates = true 
 		};
@@ -30,7 +34,6 @@ public class Bot
 		_botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, _receiverOptions, _cancellationTokenSource.Token);
 		var me = await _botClient.GetMeAsync();
 		Console.WriteLine($"{me.FirstName} запущен!");
-		await Task.Delay(-1);
 	}
 
 	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -40,24 +43,34 @@ public class Bot
 			switch (update.Type)
 			{
 				case UpdateType.Message:
-					var message = update.Message;
-					if(message is not null)
-					{
-                        var user = message.From;
-
-						if(user is not null)
+					var text = update.Message?.Text ?? "";
+                    if (text.Contains('/'))
+                    {
+						if (CommandManager.CommandList.Contains(text))
 						{
-                            Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {message.Text}");
-
-                            var chat = message.Chat;
-                            await botClient.SendTextMessageAsync(
-                                chat.Id,
-                                message.Text ?? "",
-                                replyToMessageId: message.MessageId
-                            );
+                            CommandManager.Commands[text].Invoke(botClient, update);
                         }
                     }
-					break;
+					else
+					{
+						var chat = update.Message?.Chat;
+						if (chat is not null){
+                            await botClient.SendTextMessageAsync(
+								chat.Id,
+								"Введите команду \"/start\""
+							);
+                        }
+						
+					}
+                    break;
+				case UpdateType.CallbackQuery:
+                    var callbackQuery = update.CallbackQuery;
+					var button = callbackQuery?.Data ?? "";
+					if (ButtonManager.ButtonList.Contains(button))
+					{
+                        ButtonManager.Buttons[button].Invoke(botClient, update);
+                    }
+                    break;
 				default:
 					break;
 			}
