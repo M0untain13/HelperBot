@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json.Linq;
 
 namespace ConsoleProject;
 
@@ -26,8 +27,10 @@ public class Program
 			}
 		}
 
-		// https://t.me/Tg0Test13_bot
-		// token: 7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak
+        // https://t.me/Tg0Test13_bot
+        // token: 7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak
+
+        /* TODO: раскоментить перед релизом
 		Console.Write("Введите токен (Символы не отображаются в целях безопасности):");
 		var token = "";
 		var isInput = true;
@@ -48,9 +51,11 @@ public class Program
             }
         }
 		Console.Clear();
-
         var bot = new Bot(token);
-		bot.StartAsync().Wait();
+		*/
+
+        var bot = new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak");
+        bot.StartAsync().Wait();
 	}
 	
 	// Здесь тест запросов к бд (потом могут пригодиться), проблема только в том, что я не понял как можно экранировать названия таблиц и переменных
