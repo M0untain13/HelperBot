@@ -33,17 +33,17 @@ public class Bot
 	{
 		_botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, _receiverOptions, _cancellationTokenSource.Token);
 		var me = await _botClient.GetMeAsync();
-		Console.WriteLine($"{me.FirstName} запущен!");
+        Logger.Info($"Телеграм-бот \"{me.FirstName}\" запущен!");
 	}
 
 	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
 	{
 		try
 		{
-			switch (update.Type)
+            switch (update.Type)
 			{
 				case UpdateType.Message:
-					var text = update.Message?.Text ?? "";
+                    var text = update.Message?.Text ?? "";
                     if (text.Contains('/'))
                     {
 						if (CommandManager.CommandList.Contains(text))
@@ -62,6 +62,7 @@ public class Bot
                         }
 						
 					}
+                    Logger.Info($"User:{update.Message.From.Username} Text:{text}");
                     break;
 				case UpdateType.CallbackQuery:
                     var callbackQuery = update.CallbackQuery;
@@ -77,7 +78,7 @@ public class Bot
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine(ex.ToString());
+            Logger.Error(ex.ToString());
 		}
 	}
 
@@ -89,7 +90,7 @@ public class Bot
 			_ => exception.ToString()
 		};
 
-		Console.WriteLine(ErrorMessage);
+		Logger.Error(ErrorMessage);
 		return Task.CompletedTask;
 	}
 }
