@@ -27,7 +27,29 @@ public class Program
 		}
 
 		// https://t.me/Tg0Test13_bot
-		var bot = new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak");
+		// token: 7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak
+		Console.Write("Введите токен (Символы не отображаются в целях безопасности):");
+		var token = "";
+		var isInput = true;
+		while(isInput)
+		{
+            var keyInfo = Console.ReadKey(true);
+			switch (keyInfo.Key)
+			{
+				case ConsoleKey.Backspace:
+					token = "";
+                    break;
+                case ConsoleKey.Enter:
+					isInput = false;
+                    break;
+				default:
+					token += keyInfo.KeyChar;
+                    break;
+            }
+        }
+		Console.Clear();
+
+        var bot = new Bot(token);
 		bot.StartAsync().Wait();
 	}
 	
