@@ -1,15 +1,22 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ConsoleProject.Models;
 
 namespace ConsoleProject;
 
 public class ApplicationContext : DbContext
 {
-	public ApplicationContext()
+	public ApplicationContext(DbContextOptions<ApplicationContext> options) 
+		: base(options)
 	{
-		Database.EnsureCreated();
 	}
-
-	// TODO: Знаки вопроса заменить на данные БД
+	
+	public DbSet<TestTable> TestTables { get; set; }
+	
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-		=> optionsBuilder.UseNpgsql($"Host=?;Port=?;Database=?;Username=?;Password=?");
+	{
+		if (!optionsBuilder.IsConfigured)
+		{
+			optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234");
+		}
+	}
 }
