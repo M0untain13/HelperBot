@@ -32,8 +32,8 @@ public class Program
 	}
 	
 	// Здесь тест запросов к бд (потом могут пригодиться), проблема только в том, что я не понял как можно экранировать названия таблиц и переменных
-	// для сохранения регистра (он кидает в нижний все), поэтому поехал конструктор в модели, найди как эт можно сделать плез
-	/*private static void TestDatabaseConnection(ApplicationContext context)
+	// для сохранения регистра (он кидает в нижний все), поэтому поехал конструктор в модели
+	private static void TestDatabaseConnection(ApplicationContext context)
 	{
 		// Простой запрос для проверки подключения к базе данных
 		Console.WriteLine("Проверка подключения к базе данных...");
@@ -46,7 +46,7 @@ public class Program
 			Console.WriteLine($"Id: {value.id}, Name: {value.name}");
 		}
 		Console.WriteLine("Подключение к базе данных успешно проверено.");
-	}*/
+	}
 
 	private static IHostBuilder CreateHostBuilder(string[] args) =>
 		Host.CreateDefaultBuilder(args)
