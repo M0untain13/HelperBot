@@ -12,20 +12,22 @@ public class Bot
 	private readonly ITelegramBotClient _botClient;
 	private readonly ReceiverOptions _receiverOptions;
 	private readonly CancellationTokenSource _cancellationTokenSource;
-	private readonly RegistrationService _registrationService;
+	private readonly MessageHandlerService _messageHandlerService;
+	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
 
-	public Bot(string token, RegistrationService registrationService)
+	public Bot(string token, MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
 	{
 		_botClient = new TelegramBotClient(token);
 		_receiverOptions = new ReceiverOptions
 		{
 			// https://core.telegram.org/bots/api#update
-			AllowedUpdates = new[] { UpdateType.Message },
+			AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery },
 			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
 			ThrowPendingUpdates = true 
 		};
 		_cancellationTokenSource = new CancellationTokenSource();
-		_registrationService = registrationService;
+		_messageHandlerService = messageHandlerService;
+		_callbackQueryHandlerService = callbackQueryHandlerService;
 	}
 
 	public async Task StartAsync()
@@ -43,47 +45,13 @@ public class Bot
 			switch (update.Type)
 			{
 				case UpdateType.Message:
-					var message = update.Message;
-					if (message is null)
-						return;
-
-					var user = message.From;
-					var chat = message.Chat;
-					var text = message.Text;
-					if (user is null || chat is null || text is null)
-						return;
-					
-					Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
-
-					switch (text)
-					{
-						case "/start":
-							await _registrationService.StartAsync(botClient, message);
-							break;
-						case "/cancel":
-							await _registrationService.CancelRegistrationAsync(botClient, chat.Id, user.Id);
-							break;
-						case "/help":
-							await _registrationService.SendHelpMessageAsync(botClient, chat.Id);
-							break;
-						default:
-							if (_registrationService.IsUserRegistration(user.Id))
-							{
-								await _registrationService.StartAsync(botClient, message);
-							}
-							else
-							{
-								await botClient.SendTextMessageAsync(
-									chat.Id,
-									text,
-									replyToMessageId: message.MessageId
-								);
-							}
-							break;
-					}
+					await _messageHandlerService.HandleAsync(botClient, update);
+					break;
+				case UpdateType.CallbackQuery:
+					await _callbackQueryHandlerService.HandleAsync(botClient, update);
 					break;
 				default:
-					break;
+					throw new Exception($"Нет инструкций, как реагировать на \"{update.Type}\".");
 			}
 		}
 		catch (Exception ex)

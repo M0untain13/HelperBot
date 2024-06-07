@@ -8,7 +8,6 @@ namespace ConsoleProject.Services
         private readonly Dictionary<long, string> _userSteps;
         private readonly Dictionary<long, string> _userNames;
         private readonly Dictionary<long, string> _userSurnames;
-        private readonly ITelegramBotClient _botClient;
         private readonly UserService _userService;
 
         public RegistrationService(UserService userService)
@@ -43,7 +42,7 @@ namespace ConsoleProject.Services
                 {
                     if (message.Text == "/start" || message.Text == "/help")
                     {
-                        await RemindUserOfRegistrationStep(botClient, chat.Id, user.Id);
+                        await RemindUserOfRegistrationStep(botClient, message);
                     }
                     else
                     {
@@ -85,8 +84,11 @@ namespace ConsoleProject.Services
             }
         }
         
-        private async Task RemindUserOfRegistrationStep(ITelegramBotClient botClient, long chatId, long userId)
+        private async Task RemindUserOfRegistrationStep(ITelegramBotClient botClient, Message message)
         {
+            var chatId = message.Chat.Id;
+            var userId = message.From.Id;
+
             var step = _userSteps[userId];
             switch (step)
             {
@@ -104,8 +106,11 @@ namespace ConsoleProject.Services
             }
         }
         
-        public async Task CancelRegistrationAsync(ITelegramBotClient botClient, long chatId, long userId)
+        public async Task CancelRegistrationAsync(ITelegramBotClient botClient, Message message)
         {
+            var chatId = message.Chat.Id;
+            var userId = message.From.Id;
+
             if (!_userSteps.ContainsKey(userId))
             {
                 await botClient.SendTextMessageAsync(chatId, "Вы сейчас не находитесь в регистрации.");
@@ -119,8 +124,11 @@ namespace ConsoleProject.Services
             }
         }
 
-        public async Task SendHelpMessageAsync(ITelegramBotClient botClient, long chatId)
+        // TODO: мне кажется реализация команды /help не тут должна быть
+        public async Task SendHelpMessageAsync(ITelegramBotClient botClient, Message message)
         {
+            var chatId = message.Chat.Id;
+
             string helpMessage = "Доступные команды:\n" +
                                  "/start - Start registration\n" +
                                  "/cancel - Cancel registration\n" +
