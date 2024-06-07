@@ -26,10 +26,14 @@ public class Program
 				services.AddSingleton<UserService>();
 				services.AddSingleton<RegistrationService>();
 				services.AddSingleton<MessageHandlerService>();
+				services.AddSingleton<CallbackQueryHandlerService>();
 				services.AddSingleton<Bot>(
 					provider => {
-						var messageHandlerService = provider.GetRequiredService<MessageHandlerService>();
-						return new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak", messageHandlerService);
+						return new Bot(
+							"7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak", 
+							provider.GetRequiredService<MessageHandlerService>(),
+							provider.GetRequiredService<CallbackQueryHandlerService>()
+						);
 					}
 				);
 			}

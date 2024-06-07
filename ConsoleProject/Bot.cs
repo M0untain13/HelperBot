@@ -13,19 +13,21 @@ public class Bot
 	private readonly ReceiverOptions _receiverOptions;
 	private readonly CancellationTokenSource _cancellationTokenSource;
 	private readonly MessageHandlerService _messageHandlerService;
+	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
 
-	public Bot(string token, MessageHandlerService messageHandlerService)
+	public Bot(string token, MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
 	{
 		_botClient = new TelegramBotClient(token);
 		_receiverOptions = new ReceiverOptions
 		{
 			// https://core.telegram.org/bots/api#update
-			AllowedUpdates = new[] { UpdateType.Message },
+			AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery },
 			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
 			ThrowPendingUpdates = true 
 		};
 		_cancellationTokenSource = new CancellationTokenSource();
 		_messageHandlerService = messageHandlerService;
+		_callbackQueryHandlerService = callbackQueryHandlerService;
 	}
 
 	public async Task StartAsync()
@@ -45,8 +47,11 @@ public class Bot
 				case UpdateType.Message:
 					await _messageHandlerService.HandleAsync(botClient, update);
 					break;
-				default:
+				case UpdateType.CallbackQuery:
+					await _callbackQueryHandlerService.HandleAsync(botClient, update);
 					break;
+				default:
+					throw new Exception($"Нет инструкций, как реагировать на \"{update.Type}\".");
 			}
 		}
 		catch (Exception ex)

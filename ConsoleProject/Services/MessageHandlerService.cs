@@ -2,6 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types.Enums;
 using System.Collections.Generic;
 
@@ -50,11 +51,21 @@ public class MessageHandlerService
             }
             else
             {
-                // TODO: нужно возвращать кнопки
+                var inlineKeyboard = new InlineKeyboardMarkup(
+                    new InlineKeyboardButton[][]{
+                        new InlineKeyboardButton[]{
+                            InlineKeyboardButton.WithCallbackData("FAQ", "faq_button"),
+                            InlineKeyboardButton.WithCallbackData("Задать вопрос", "ask_button")
+                        },
+                        new InlineKeyboardButton[]{
+                            InlineKeyboardButton.WithCallbackData("Узнать своё настроение за прошедшие 5 дней", "mood_button")
+                        }
+                    }
+                );
                 await botClient.SendTextMessageAsync(
                     chat.Id,
-                    text,
-                    replyToMessageId: message.MessageId
+                    "Меню",
+                    replyMarkup: inlineKeyboard
                 );
             }
         }
