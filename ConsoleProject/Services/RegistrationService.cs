@@ -11,9 +11,8 @@ namespace ConsoleProject.Services
         private readonly ITelegramBotClient _botClient;
         private readonly UserService _userService;
 
-        public RegistrationService(ITelegramBotClient botClient, UserService userService)
+        public RegistrationService(UserService userService)
         {
-            _botClient = botClient;
             _userService = userService;
             _userSteps = new Dictionary<long, string>();
             _userNames = new Dictionary<long, string>();
@@ -25,36 +24,36 @@ namespace ConsoleProject.Services
             return _userSteps.ContainsKey(userId);
         }
 
-        public async Task StartAsync(Message message)
+        public async Task StartAsync(ITelegramBotClient botClient, Message message)
         {
             var chat = message.From;
             var user = message.From;
 
             if (_userService.IsUserRegistered(user.Id))
             {
-                await _botClient.SendTextMessageAsync(chat.Id,"Вы уже зарегистрированы.");
+                await botClient.SendTextMessageAsync(chat.Id,"Вы уже зарегистрированы.");
             }
             else
             {
                 if (!_userSteps.ContainsKey(user.Id))
                 {
-                    await RegisterUserAsync(message);
+                    await RegisterUserAsync(botClient, message);
                 }
                 else
                 {
                     if (message.Text == "/start" || message.Text == "/help")
                     {
-                        await RemindUserOfRegistrationStep(_botClient, chat.Id, user.Id);
+                        await RemindUserOfRegistrationStep(botClient, chat.Id, user.Id);
                     }
                     else
                     {
-                        await RegisterUserAsync(message);
+                        await RegisterUserAsync(botClient, message);
                     }
                 }
             }
         }
         
-        public async Task RegisterUserAsync(Message message)
+        public async Task RegisterUserAsync(ITelegramBotClient botClient, Message message)
         {
             var chatId = message.Chat.Id;
             var userId = message.From.Id;
@@ -62,7 +61,7 @@ namespace ConsoleProject.Services
             if (!_userSteps.ContainsKey(userId))
             {
                 _userSteps[userId] = "name";
-                await _botClient.SendTextMessageAsync(chatId, "Добро пожаловать! Пожалуйста, введите ваше имя:");
+                await botClient.SendTextMessageAsync(chatId, "Добро пожаловать! Пожалуйста, введите ваше имя:");
                 return;
             }
             switch (_userSteps[userId])
@@ -70,7 +69,7 @@ namespace ConsoleProject.Services
                 case "name":
                     _userNames[userId] = message.Text;
                     _userSteps[userId] = "surname";
-                    await _botClient.SendTextMessageAsync(chatId, "Введите вашу фамилию:");
+                    await botClient.SendTextMessageAsync(chatId, "Введите вашу фамилию:");
                     break;
                 case "surname":
                     _userSurnames[userId] = message.Text;
@@ -78,7 +77,7 @@ namespace ConsoleProject.Services
                     var surname = _userSurnames[userId];
                     var username = message.From.Username ?? "не указан";
                     _userService.RegisterUser(userId, username, name, surname);
-                    await _botClient.SendTextMessageAsync(chatId, "Регистрация завершена!");
+                    await botClient.SendTextMessageAsync(chatId, "Регистрация завершена!");
                     _userSteps.Remove(userId);
                     _userNames.Remove(userId);
                     _userSurnames.Remove(userId);
@@ -105,28 +104,28 @@ namespace ConsoleProject.Services
             }
         }
         
-        public async Task CancelRegistrationAsync(long chatId, long userId)
+        public async Task CancelRegistrationAsync(ITelegramBotClient botClient, long chatId, long userId)
         {
             if (!_userSteps.ContainsKey(userId))
             {
-                await _botClient.SendTextMessageAsync(chatId, "Вы сейчас не находитесь в регистрации.");
+                await botClient.SendTextMessageAsync(chatId, "Вы сейчас не находитесь в регистрации.");
             }
             else
             {
                 _userSteps.Remove(userId);
                 _userNames.Remove(userId);
                 _userSurnames.Remove(userId);
-                await _botClient.SendTextMessageAsync(chatId, "Регистрация отменена.");
+                await botClient.SendTextMessageAsync(chatId, "Регистрация отменена.");
             }
         }
 
-        public async Task SendHelpMessageAsync(long chatId)
+        public async Task SendHelpMessageAsync(ITelegramBotClient botClient, long chatId)
         {
             string helpMessage = "Доступные команды:\n" +
                                  "/start - Start registration\n" +
                                  "/cancel - Cancel registration\n" +
                                  "/help - List commands";
-            await _botClient.SendTextMessageAsync(chatId, helpMessage);
+            await botClient.SendTextMessageAsync(chatId, helpMessage);
         }
     }
 }

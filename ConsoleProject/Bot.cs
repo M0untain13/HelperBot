@@ -14,7 +14,7 @@ public class Bot
 	private readonly CancellationTokenSource _cancellationTokenSource;
 	private readonly RegistrationService _registrationService;
 
-	public Bot(string token, UserService userService)
+	public Bot(string token, RegistrationService registrationService)
 	{
 		_botClient = new TelegramBotClient(token);
 		_receiverOptions = new ReceiverOptions
@@ -25,7 +25,7 @@ public class Bot
 			ThrowPendingUpdates = true 
 		};
 		_cancellationTokenSource = new CancellationTokenSource();
-		_registrationService = new RegistrationService(_botClient, userService);
+		_registrationService = registrationService;
 	}
 
 	public async Task StartAsync()
@@ -36,7 +36,7 @@ public class Bot
 		await Task.Delay(-1);
 	}
 
-	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken _)
 	{
 		try
 		{
@@ -58,18 +58,18 @@ public class Bot
 					switch (text)
 					{
 						case "/start":
-							await _registrationService.StartAsync(message);
+							await _registrationService.StartAsync(botClient, message);
 							break;
 						case "/cancel":
-							await _registrationService.CancelRegistrationAsync(chat.Id, user.Id);
+							await _registrationService.CancelRegistrationAsync(botClient, chat.Id, user.Id);
 							break;
 						case "/help":
-							await _registrationService.SendHelpMessageAsync(chat.Id);
+							await _registrationService.SendHelpMessageAsync(botClient, chat.Id);
 							break;
 						default:
 							if (_registrationService.IsUserRegistration(user.Id))
 							{
-								await _registrationService.StartAsync(message);
+								await _registrationService.StartAsync(botClient, message);
 							}
 							else
 							{
@@ -80,6 +80,7 @@ public class Bot
 								);
 							}
 							break;
+					}
 					break;
 				default:
 					break;

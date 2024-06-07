@@ -23,11 +23,12 @@ public class Program
 						options.UseNpgsql(
 							"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234")
 				);
-				services.AddTransient<UserService>();
+				services.AddSingleton<UserService>();
+				services.AddSingleton<RegistrationService>();
 				services.AddSingleton<Bot>(
 					provider => {
-						var userService = provider.GetRequiredService<UserService>();
-						return new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak", userService);
+						var registrationService = provider.GetRequiredService<RegistrationService>();
+						return new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak", registrationService);
 					}
 				);
 			}
