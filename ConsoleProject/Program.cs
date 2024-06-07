@@ -15,7 +15,6 @@ public class Program
 		var host = CreateHostBuilder(args).Build();
 		var bot = host.Services.GetRequiredService<Bot>();
 		bot.StartAsync().Wait();
-		var host = CreateHostBuilder(args).Build();
 
 		using (var scope = host.Services.CreateScope())
 		{
@@ -58,9 +57,6 @@ public class Program
 		Console.Clear();
         var bot = new Bot(token);
 		*/
-
-        var bot = new Bot("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak");
-        bot.StartAsync().Wait();
 	}
 
 	private static IHostBuilder CreateHostBuilder(string[] args) =>
