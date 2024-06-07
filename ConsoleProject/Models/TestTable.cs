@@ -3,19 +3,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConsoleProject.Models
 {
-    [Table("testtable")]
+    [Table("TestTable")]
     public class TestTable
     {
-        public TestTable(int id)
-        {
-            this.id = id;
-            this.name = name;
-        }
-
-        public int id { get; set; }
+        public int Id { get; set; }
         
         [MaxLength(50)]
-        public string? name { get; set; }
+        public string? Name { get; set; }
 
     }
 }

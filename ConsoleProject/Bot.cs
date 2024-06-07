@@ -3,6 +3,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using ConsoleProject.Services;
 
 namespace ConsoleProject;
 
@@ -11,8 +12,9 @@ public class Bot
 	private readonly ITelegramBotClient _botClient;
 	private readonly ReceiverOptions _receiverOptions;
 	private readonly CancellationTokenSource _cancellationTokenSource;
+	private readonly RegistrationService _registrationService;
 
-	public Bot(string token)
+	public Bot(string token, RegistrationService registrationService)
 	{
 		_botClient = new TelegramBotClient(token);
 		_receiverOptions = new ReceiverOptions
@@ -23,6 +25,7 @@ public class Bot
 			ThrowPendingUpdates = true 
 		};
 		_cancellationTokenSource = new CancellationTokenSource();
+		_registrationService = registrationService;
 	}
 
 	public async Task StartAsync()
@@ -33,7 +36,7 @@ public class Bot
 		await Task.Delay(-1);
 	}
 
-	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken _)
 	{
 		try
 		{
@@ -41,22 +44,43 @@ public class Bot
 			{
 				case UpdateType.Message:
 					var message = update.Message;
-					if(message is not null)
+					if (message is null)
+						return;
+
+					var user = message.From;
+					var chat = message.Chat;
+					var text = message.Text;
+					if (user is null || chat is null || text is null)
+						return;
+					
+					Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
+
+					switch (text)
 					{
-                        var user = message.From;
-
-						if(user is not null)
-						{
-                            Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {message.Text}");
-
-                            var chat = message.Chat;
-                            await botClient.SendTextMessageAsync(
-                                chat.Id,
-                                message.Text ?? "",
-                                replyToMessageId: message.MessageId
-                            );
-                        }
-                    }
+						case "/start":
+							await _registrationService.StartAsync(botClient, message);
+							break;
+						case "/cancel":
+							await _registrationService.CancelRegistrationAsync(botClient, chat.Id, user.Id);
+							break;
+						case "/help":
+							await _registrationService.SendHelpMessageAsync(botClient, chat.Id);
+							break;
+						default:
+							if (_registrationService.IsUserRegistration(user.Id))
+							{
+								await _registrationService.StartAsync(botClient, message);
+							}
+							else
+							{
+								await botClient.SendTextMessageAsync(
+									chat.Id,
+									text,
+									replyToMessageId: message.MessageId
+								);
+							}
+							break;
+					}
 					break;
 				default:
 					break;
@@ -70,13 +94,13 @@ public class Bot
 
 	private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
 	{
-		var ErrorMessage = exception switch
+		var errorMessage = exception switch
 		{
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
 
-		Console.WriteLine(ErrorMessage);
+		Console.WriteLine(errorMessage);
 		return Task.CompletedTask;
 	}
 }
