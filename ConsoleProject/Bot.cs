@@ -44,43 +44,42 @@ public class Bot
 			{
 				case UpdateType.Message:
 					var message = update.Message;
+					if (message is null)
+						return;
+
+					var user = message.From;
+					var chat = message.Chat;
+					var text = message.Text;
+					if (user is null || chat is null || text is null)
+						return;
 					
-					if (message is not null)
+					Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
+
+					switch (text)
 					{
-						var user = message.From;
-						if (user is not null)
-						{
-							Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {message.Text}");
-							var chat = message.Chat;
-							switch (message.Text)
+						case "/start":
+							await _registrationService.StartAsync(message);
+							break;
+						case "/cancel":
+							await _registrationService.CancelRegistrationAsync(chat.Id, user.Id);
+							break;
+						case "/help":
+							await _registrationService.SendHelpMessageAsync(chat.Id);
+							break;
+						default:
+							if (_registrationService.IsUserRegistration(user.Id))
 							{
-								case "/start":
-									await _registrationService.StartAsync(message);
-									break;
-								case "/cancel":
-									await _registrationService.CancelRegistrationAsync(chat.Id, user.Id);
-									break;
-								case "/help":
-									await _registrationService.SendHelpMessageAsync(chat.Id);
-									break;
-								default:
-									if (_registrationService.IsUserRegistration(user.Id))
-									{
-										await _registrationService.StartAsync(message);
-									}
-									else
-									{
-										await botClient.SendTextMessageAsync(
-											chat.Id,
-											message.Text ?? "",
-											replyToMessageId: message.MessageId
-										);
-									}
-									break;
-									
+								await _registrationService.StartAsync(message);
 							}
-						}
-					}
+							else
+							{
+								await botClient.SendTextMessageAsync(
+									chat.Id,
+									text,
+									replyToMessageId: message.MessageId
+								);
+							}
+							break;
 					break;
 				default:
 					break;

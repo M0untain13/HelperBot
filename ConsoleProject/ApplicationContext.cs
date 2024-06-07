@@ -6,10 +6,7 @@ namespace ConsoleProject;
 
 public class ApplicationContext : DbContext
 {
-	public ApplicationContext(DbContextOptions<ApplicationContext> options) 
-		: base(options)
-	{
-	}
+	public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { }
 	
 	public DbSet<TestTable> TestTables { get; set; }
 	public DbSet<Employee> Employees { get; set; }
@@ -18,12 +15,7 @@ public class ApplicationContext : DbContext
 	public DbSet<Position> Positions { get; set; }
 	public DbSet<Access> Accesses { get; set; }
 	
-	
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-	{
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
 		if (!optionsBuilder.IsConfigured)
-		{
 			optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234");
-		}
-	}
 }
