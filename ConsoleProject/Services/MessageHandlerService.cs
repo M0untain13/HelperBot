@@ -8,65 +8,38 @@ using System.Collections.Generic;
 
 namespace ConsoleProject.Services;
 
-delegate Task MessageHandle(ITelegramBotClient botClient, Message update);
-
 public class MessageHandlerService
 {
-    private readonly RegistrationService _registrationService;
+    private readonly UserService _userService;
+    private readonly HandlerUserMessage _handlerUserMessage;
 
-    public MessageHandlerService(RegistrationService registrationService)
+    public MessageHandlerService(UserService userService, HandlerUserMessage handlerUserMessage)
     {
-        _registrationService = registrationService;
+        _userService = userService;
+        _handlerUserMessage = handlerUserMessage;
     }
     
     public async Task HandleAsync(ITelegramBotClient botClient, Update update)
     {
-        var message = update.Message;
-		if (message is null)
-			return;
-
-		var user = message.From;
-		var chat = message.Chat;
-		var text = message.Text;
-        if (user is null || chat is null || text is null)
-            return;
-
-        Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
-
-        var commands = new Dictionary<string, MessageHandle>();
-        // TODO: нужно заполнять массив теми командами, которые доступны пользователю
-        commands["/start"] = _registrationService.StartAsync;
-        commands["/cancel"] = _registrationService.CancelRegistrationAsync;
-        commands["/help"] = _registrationService.SendHelpMessageAsync;
-
-        if (commands.Keys.Contains(text))
+        var userId = update.Message.From.Id;
+        if (!_userService.IsUserRegistered(userId))
         {
-            await commands[text].Invoke(botClient, message);
+            await _handlerUserMessage.HandleAsync(botClient, update);
         }
         else
         {
-            if (_registrationService.IsUserRegistration(user.Id))
+            if (_userService.GetUserRole(userId) == "employee")
             {
-                await commands["/start"].Invoke(botClient, message);
+                await _handlerUserMessage.HandleAsync(botClient, update);
+            }
+            else if (_userService.GetUserRole(userId) == "HR/Administrator")
+            {
+                await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Вы HR и вы написали сообщение");
+                Console.WriteLine("HR/Администратор написал сообщение");
             }
             else
             {
-                var inlineKeyboard = new InlineKeyboardMarkup(
-                    new InlineKeyboardButton[][]{
-                        new InlineKeyboardButton[]{
-                            InlineKeyboardButton.WithCallbackData("FAQ", "faq_button"),
-                            InlineKeyboardButton.WithCallbackData("Задать вопрос", "ask_button")
-                        },
-                        new InlineKeyboardButton[]{
-                            InlineKeyboardButton.WithCallbackData("Узнать своё настроение за прошедшие 5 дней", "mood_button")
-                        }
-                    }
-                );
-                await botClient.SendTextMessageAsync(
-                    chat.Id,
-                    "Меню",
-                    replyMarkup: inlineKeyboard
-                );
+                await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Неизвестная роль пользователя.");
             }
         }
     }

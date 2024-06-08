@@ -6,17 +6,18 @@ namespace ConsoleProject.Models
     [Table("accesses")]
     public class Access
     {
-        public Access(int positionsId)
+        public Access(long telegramId, int positionsId)
         {
             PositionsId = positionsId;
+            TelegramId = telegramId;
         }
 
         [Key]
         [Column("telegram_id")]
-        public int TelegramId { get; set; }
+        public long TelegramId { get; set; }
         
         [Required]
-        [Column("positions_id")]
+        [Column("position_id")]
         public int PositionsId { get; set; }
 
         [ForeignKey(nameof(PositionsId))]

@@ -73,6 +73,7 @@ public class Program
 				services.AddSingleton<RegistrationService>();
 				services.AddSingleton<MessageHandlerService>();
 				services.AddSingleton<CallbackQueryHandlerService>();
+				services.AddSingleton<HandlerUserMessage>();
 				services.AddSingleton<Bot>(
 					provider => {
 						return new Bot(
