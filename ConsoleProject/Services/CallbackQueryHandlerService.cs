@@ -14,7 +14,7 @@ public class CallbackQueryHandlerService
         var button = callbackQuery.Data;
         var chat = callbackQuery.Message?.Chat;
 		var user = callbackQuery.Message?.From;
-		if (button is null || chat is null)
+		if (button is null || chat is null || user is null)
 			return;
 		
 		Console.WriteLine($"{user.FirstName} ({chat.Id}) нажал на кнопку \"{button}\"");

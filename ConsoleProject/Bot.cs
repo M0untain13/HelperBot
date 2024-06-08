@@ -9,35 +9,34 @@ namespace ConsoleProject;
 
 public class Bot
 {
-	private readonly ITelegramBotClient _botClient;
-	private readonly ReceiverOptions _receiverOptions;
-	private readonly CancellationTokenSource _cancellationTokenSource;
 	private readonly MessageHandlerService _messageHandlerService;
 	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
 
-	public Bot(string token, MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
+	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
 	{
-		_botClient = new TelegramBotClient(token);
-		_receiverOptions = new ReceiverOptions
-		{
-			// https://core.telegram.org/bots/api#update
-			AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery },
-			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
-			ThrowPendingUpdates = true 
-		};
-		_cancellationTokenSource = new CancellationTokenSource();
 		_messageHandlerService = messageHandlerService;
 		_callbackQueryHandlerService = callbackQueryHandlerService;
 	}
 
-	public async Task StartAsync()
+	public async Task StartAsync(string token)
 	{
-		_botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, _receiverOptions, _cancellationTokenSource.Token);
-		var me = await _botClient.GetMeAsync();
+		var botClient = new TelegramBotClient(token);
+		var receiverOptions = new ReceiverOptions
+		{
+			// https://core.telegram.org/bots/api#update
+			AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery],
+			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
+			ThrowPendingUpdates = true 
+		};
+		var cancellationTokenSource = new CancellationTokenSource();
+		
+		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
+		var me = await botClient.GetMeAsync();
 		Console.WriteLine($"{me.FirstName} запущен!");
 		await Task.Delay(-1);
 	}
-
+	
+	// TODO: надо бы пробросить токен отмены дальше
 	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken _)
 	{
 		try
@@ -60,7 +59,7 @@ public class Bot
 		}
 	}
 
-	private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+	private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken _)
 	{
 		var errorMessage = exception switch
 		{

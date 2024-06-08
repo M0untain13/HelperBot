@@ -11,17 +11,14 @@ namespace ConsoleProject.Services
         {
             _context = context;
         }
-
-        public bool IsUserRegistered(long telegramId)
+        
+        public string? GetUserRole(long telegramId)
         {
-            return _context.Employees.Any(e => e.TelegramId == telegramId);
-        }
-
-        public void RegisterUser(long telegramId, string login, string name, string surname)
-        {
-            var user = new Employee(telegramId, login, name, surname);
-            _context.Employees.Add(user);
-            _context.SaveChanges();
+            var access = _context.Accesses
+                .Include(a => a.Position)
+                .FirstOrDefault(a => a.TelegramId == telegramId);
+        
+            return access?.Position.Name;
         }
     }
 }
