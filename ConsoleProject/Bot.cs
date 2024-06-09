@@ -11,12 +11,15 @@ public class Bot
 {
 	private readonly MessageHandlerService _messageHandlerService;
 	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
+	private readonly Interviewer _interviewer;
 
-	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
+	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService, Interviewer interviewer)
 	{
 		_messageHandlerService = messageHandlerService;
 		_callbackQueryHandlerService = callbackQueryHandlerService;
-	}
+        _interviewer = interviewer;
+
+    }
 
 	public async Task StartAsync(string token)
 	{
@@ -33,6 +36,7 @@ public class Bot
 		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
 		var me = await botClient.GetMeAsync();
 		Console.WriteLine($"{me.FirstName} запущен!");
+		await _interviewer.StartAsync(botClient);
 		await Task.Delay(-1);
 	}
 	

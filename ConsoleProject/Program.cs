@@ -30,9 +30,10 @@ public class Program
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
 					.AddSingleton<HrButtonService>()
-          .AddSingleton<FaqService>()
+					.AddSingleton<FaqService>()
 					.AddSingleton<UserButtonService>()
-					.AddSingleton<Bot>();
+                    .AddSingleton<Interviewer>()
+                    .AddSingleton<Bot>();
 			}
 		);
 }
