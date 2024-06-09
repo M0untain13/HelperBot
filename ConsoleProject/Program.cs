@@ -28,6 +28,7 @@ public class Program
 				services.AddSingleton<ResponseService>();
 				services.AddSingleton<MessageHandlerService>();
 				services.AddSingleton<CallbackQueryHandlerService>();
+				services.AddSingleton<FaqService>();
 				services.AddSingleton<Bot>();
 			}
 		);

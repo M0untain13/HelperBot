@@ -9,7 +9,10 @@ public class MessageHandlerService
     private readonly UserService _userService;
     private readonly AuthService _authService;
     private readonly ResponseService _responseService;
-    private readonly Dictionary<string, InlineKeyboardMarkup> _keyboards;
+    private readonly Dictionary<string, InlineKeyboardMarkup?> _keyboards;
+
+    private readonly Dictionary<long, (string State, string Question)> _userStates =
+        new Dictionary<long, (string, string)>();
     
     public MessageHandlerService(UserService userService, AuthService authService, ResponseService responseService)
     {
@@ -17,7 +20,7 @@ public class MessageHandlerService
         _authService = authService;
         _responseService = responseService;
 
-        _keyboards = new Dictionary<string, InlineKeyboardMarkup>();
+        _keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
         _keyboards["user"] = new InlineKeyboardMarkup(
             new InlineKeyboardButton[][]{
                 new InlineKeyboardButton[]{
@@ -44,6 +47,21 @@ public class MessageHandlerService
                 }
             }
         );
+        _keyboards["edit_faq"] = new InlineKeyboardMarkup(
+            new InlineKeyboardButton[][]
+            {
+                new InlineKeyboardButton[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Добавить новый FAQ", "hr_add_faq"),
+                    InlineKeyboardButton.WithCallbackData("Изменить существующий FAQ", "hr_modify_faq")
+                },
+                new InlineKeyboardButton[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Удалить FAQ", "hr_delete_faq"),
+                    InlineKeyboardButton.WithCallbackData("Вернуться назад", "hr_back_to_main")
+                }
+            }
+        );
     }
     
     public async Task HandleAsync(ITelegramBotClient botClient, Update update)
@@ -57,6 +75,7 @@ public class MessageHandlerService
             return;
         
         var userId = user.Id;
+        var chatId = message.Chat.Id;
         
         // Ожидается ли какой-то ответ от пользователя?
         if (_responseService.IsResponseExpected(userId))
@@ -66,6 +85,9 @@ public class MessageHandlerService
         // Надо ли регать юзера?
         else if (!_authService.IsUserRegistered(userId))
         {
+            await botClient.SendTextMessageAsync(chatId,
+                "Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться. " +
+                "Следуйте пожалуйста следующим инструкциям для завершения регистрации:");
             await _authService.RegisterAsync(botClient, update);
         }
         // Иначе просто выдаем меню
@@ -88,6 +110,17 @@ public class MessageHandlerService
                 "Меню",
                 replyMarkup: _keyboards[role]
             );
+        }
+    }
+
+    public InlineKeyboardMarkup? GetKeyboard(string key)
+    {
+        if (_keyboards.ContainsKey(key))
+            return _keyboards[key];
+        else
+        {
+            Console.WriteLine($"Клавиатура с ключем {key} не найдена.");
+            return null;
         }
     }
 }
