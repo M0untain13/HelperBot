@@ -29,6 +29,7 @@ public class FaqService
             var chatId = callbackQuery.Message.Chat.Id;
             _faqData[chatId] = new FaqData();
             _responseService.WaitResponse(chatId, SetQuestion);
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(chatId, "Пожалуйства введите текст вопроса:");
 
         }
@@ -98,16 +99,21 @@ public class FaqService
             }
 
             _responseService.WaitResponse(id, HandleFaqSelectionForEditing);
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(id, sb.ToString());
         }
         else
+        {
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов.");
+        }
     }
 
     private async Task HandleFaqSelectionForEditing(ITelegramBotClient botClient, Message message)
     {
         var chatId = message.Chat.Id;
-        if (int.TryParse(message.Text, out int index) && _faqSelections.ContainsKey(chatId) && _faqSelections[chatId].ContainsKey(index))
+        if (int.TryParse(message.Text, out int index) && _faqSelections.ContainsKey(chatId) &&
+            _faqSelections[chatId].ContainsKey(index))
         {
             int faqId = _faqSelections[chatId][index];
             var faq = _context.Faqs.Find(faqId);
@@ -195,10 +201,14 @@ public class FaqService
             }
 
             _responseService.WaitResponse(id, HandleFaqDeleteSelection);
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(id, sb.ToString());
         }
         else
+        {
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов");
+        }
     }
 
     private async Task HandleFaqDeleteSelection(ITelegramBotClient botClient, Message message)

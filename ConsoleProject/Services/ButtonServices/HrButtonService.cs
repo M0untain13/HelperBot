@@ -17,10 +17,11 @@ public class HrButtonService : IButtonService
         _handlers["hr_mood_button"]    = GetMood;
         _handlers["hr_getask_button"]  = GetQuestion;
 
-        _handlers["hr_add_faq"] = faqService.StartFaqProcess;
-        _handlers["hr_modify_faq"] = faqService.GetAllFaqs;
-        _handlers["hr_delete_faq"] = faqService.RequestDeleteFaq;
-        _handlers["hr_back_to_main"] = BackFromFaqToMain;
+        _handlers["hr_editfaq_button"] = EditFaqMenu;
+        _handlers["hr_add_faq"]        = faqService.StartFaqProcess;
+        _handlers["hr_modify_faq"]     = faqService.GetAllFaqs;
+        _handlers["hr_delete_faq"]     = faqService.RequestDeleteFaq;
+        _handlers["hr_back_to_main"]   = BackFromFaqToMain;
     }
 
     public bool IsButtonExist(string buttonName)
@@ -119,7 +120,40 @@ public class HrButtonService : IButtonService
                 }
             }
         );
+        
+        await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+        await botClient.SendTextMessageAsync(
+            chat.Id, 
+            "Основное меню HR", 
+            replyMarkup: keyboard
+        );
+    }
+    
+    private async Task EditFaqMenu(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    {
+        var chat = callbackQuery.Message?.Chat;
+        if (chat is null)
+            return;
 
+        var id = chat.Id;
+
+        var keyboard = new InlineKeyboardMarkup(
+            new InlineKeyboardButton[][]
+            {
+                new InlineKeyboardButton[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Добавить новый FAQ", "hr_add_faq"),
+                    InlineKeyboardButton.WithCallbackData("Изменить существующий FAQ", "hr_modify_faq")
+                },
+                new InlineKeyboardButton[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Удалить FAQ", "hr_delete_faq"),
+                    InlineKeyboardButton.WithCallbackData("Вернуться назад", "hr_back_to_main")
+                }
+            }
+        );
+        
+        await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         await botClient.SendTextMessageAsync(
             chat.Id, 
             "Основное меню HR", 
