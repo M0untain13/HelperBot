@@ -21,15 +21,16 @@ public class Program
 				services.AddDbContext<ApplicationContext>(
 					options =>
 						options.UseNpgsql(
-							"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234")
-				);
-				services.AddSingleton<UserService>();
-				services.AddSingleton<AuthService>();
-				services.AddSingleton<ResponseService>();
-				services.AddSingleton<MessageHandlerService>();
-				services.AddSingleton<CallbackQueryHandlerService>();
-				services.AddSingleton<FaqService>();
-				services.AddSingleton<Bot>();
+							"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234"))
+					.AddSingleton<UserService>()
+					.AddSingleton<AuthService>()
+					.AddSingleton<ResponseService>()
+					.AddSingleton<MessageHandlerService>()
+					.AddSingleton<CallbackQueryHandlerService>()
+					.AddSingleton<HrButtonService>()
+          .AddSingleton<FaqService>()
+					.AddSingleton<UserButtonService>()
+					.AddSingleton<Bot>();
 			}
 		);
 }
