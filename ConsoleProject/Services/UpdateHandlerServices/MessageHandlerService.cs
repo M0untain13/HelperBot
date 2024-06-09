@@ -2,7 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace ConsoleProject.Services;
+namespace ConsoleProject.Services.UpdateHandlerServices;
 
 public class MessageHandlerService
 {
@@ -13,7 +13,7 @@ public class MessageHandlerService
 
     private readonly Dictionary<long, (string State, string Question)> _userStates =
         new Dictionary<long, (string, string)>();
-    
+
     public MessageHandlerService(UserService userService, AuthService authService, ResponseService responseService)
     {
         _userService = userService;
@@ -63,20 +63,20 @@ public class MessageHandlerService
             }
         );
     }
-    
+
     public async Task HandleAsync(ITelegramBotClient botClient, Update update)
     {
         var message = update.Message;
         if (message is null)
             return;
-        
+
         var user = message.From;
         if (user is null)
             return;
-        
+
         var userId = user.Id;
         var chatId = message.Chat.Id;
-        
+
         // Ожидается ли какой-то ответ от пользователя?
         if (_responseService.IsResponseExpected(userId))
         {
@@ -97,14 +97,14 @@ public class MessageHandlerService
             var text = message.Text;
             if (text is null)
                 return;
-            
+
             Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
-            
+
             var role = _userService.GetUserRole(userId) ?? "";
 
             if (!_keyboards.ContainsKey(role))
                 throw new Exception($"Нет инструкций для роли \"{role}\".");
-            
+
             await botClient.SendTextMessageAsync(
                 chat.Id,
                 "Меню",

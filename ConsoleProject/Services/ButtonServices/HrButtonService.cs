@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot;
 
-namespace ConsoleProject.Services;
+namespace ConsoleProject.Services.ButtonServices;
 
 public class HrButtonService : IButtonService
 {

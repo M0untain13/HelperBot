@@ -1,25 +1,14 @@
 using System.Text;
 using ConsoleProject.Models;
+using ConsoleProject.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace ConsoleProject.Services;
 
-
-
 public class FaqService
 {
-    private class FaqData
-    {
-        public string Question = "";
-        public string Answer = "";
-
-        public void Clear()
-        {
-            Question = "";
-            Answer = "";
-        }
-    }
+    
     
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
