@@ -42,7 +42,7 @@ public class AuthService
 
         _registrationData[id] = new UserData();
         _responseService.WaitResponse(id, SetName);
-        await botClient.SendTextMessageAsync(id, "Добро пожаловать! Пожалуйста, введите ваше имя.");
+        await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
     }
 
     private async Task SetName(ITelegramBotClient botClient, Message message)

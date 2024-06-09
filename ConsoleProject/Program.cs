@@ -28,6 +28,7 @@ public class Program
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
 					.AddSingleton<HrButtonService>()
+          .AddSingleton<FaqService>()
 					.AddSingleton<UserButtonService>()
 					.AddSingleton<Bot>();
 			}
