@@ -11,8 +11,8 @@ public class UserButtonService : IButtonService
     public UserButtonService()
     {
         _handlers = new Dictionary<string, ButtonHandle>();
-        _handlers["user_faq_button"] = GetFaq;
-        _handlers["user_ask_button"] = Ask;
+        _handlers["user_faq_button"]  = GetFaq;
+        _handlers["user_ask_button"]  = Ask;
         _handlers["user_mood_button"] = GetMood;
     }
 
