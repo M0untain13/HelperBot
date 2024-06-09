@@ -1,27 +1,12 @@
 using ConsoleProject.Models;
+using ConsoleProject.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace ConsoleProject.Services;
 
-
-
 public class AuthService
 {
-    private class UserData
-    {
-        public string name = "";
-        public string surname = "";
-        public string username = "";
-
-        public void Clear()
-        {
-            name = "";
-            surname = "";
-            username = "";
-        }
-    }
-    
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
     private readonly Dictionary<long, UserData> _registrationData;

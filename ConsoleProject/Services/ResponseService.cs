@@ -1,17 +1,16 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using ConsoleProject.Types;
 
 namespace ConsoleProject.Services;
 
-public delegate Task UserMessageHandle(ITelegramBotClient botClient, Message message);
-
 public class ResponseService
 {
-    private readonly Dictionary<long, UserMessageHandle> _waitingForResponse;
+    private readonly Dictionary<long, MessageHandle> _waitingForResponse;
 
     public ResponseService()
     {
-        _waitingForResponse = new Dictionary<long, UserMessageHandle>();
+        _waitingForResponse = new Dictionary<long, MessageHandle>();
     }
 
     public bool IsResponseExpected(long id)
@@ -36,7 +35,7 @@ public class ResponseService
             
     }
 
-    public bool WaitResponse(long id, UserMessageHandle handle)
+    public bool WaitResponse(long id, MessageHandle handle)
     {
         if (IsResponseExpected(id))
             return false;

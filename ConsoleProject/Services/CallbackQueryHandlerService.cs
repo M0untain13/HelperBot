@@ -5,6 +5,17 @@ namespace ConsoleProject.Services;
 
 public class CallbackQueryHandlerService
 {
+	private readonly UserButtonService _userButtonService;
+	private readonly HrButtonService _hrButtonService;
+	private readonly UserService _userService;
+
+    public CallbackQueryHandlerService(UserService userService, UserButtonService userButtonService, HrButtonService hrButtonService)
+    {
+		_userButtonService = userButtonService;
+		_hrButtonService = hrButtonService;
+        _userService = userService;
+    }
+
     public async Task HandleAsync(ITelegramBotClient botClient, Update update)
     {
         var callbackQuery = update.CallbackQuery;
@@ -13,31 +24,33 @@ public class CallbackQueryHandlerService
 
         var button = callbackQuery.Data;
         var chat = callbackQuery.Message?.Chat;
-		var user = callbackQuery.Message?.From;
-		if (button is null || chat is null || user is null)
+		if (button is null || chat is null)
 			return;
-		
-		Console.WriteLine($"{user.FirstName} ({chat.Id}) нажал на кнопку \"{button}\"");
 
-		var answer = "";
-		switch(button){
-			case "faq_button":
-				answer = "Нажата кнопка FAQ";
-				break;
-		    case "ask_button":
-				answer = "Нажата кнопка задания вопроса";
-				break;
-			case "mood_button":
-				answer = "Нажата кнопка запроса своего настроения за 5 дней";
-				break;
-			default:
-				throw new Exception($"Нет инструкций, как реагировать на \"{button}\".");
-		}
+		var id = chat.Id;
 
-		await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-        await botClient.SendTextMessageAsync(
-            chat.Id,
-            answer
-        );
+
+        Console.WriteLine($"({id}) нажал на кнопку \"{button}\"");
+
+        var role = _userService.GetUserRole(id) ?? "";
+
+		IButtonService buttonService;
+
+		switch (role)
+		{
+			case "user":
+                buttonService = _userButtonService;
+				break;
+			case "hr":
+				buttonService = _hrButtonService;
+				break;
+            default:
+				throw new Exception($"Нет инструкций обработки кнопок роли \"{role}\".");
+        }
+
+		if(!buttonService.IsButtonExist(button))
+            throw new Exception($"Нет инструкций для кнопки \"{button}\" для роли \"{role}\".");
+
+		await buttonService.Invoke(button, botClient, callbackQuery);
     }
 }
