@@ -8,7 +8,6 @@ public class ApplicationContext : DbContext
 {
 	public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { }
 	
-	public DbSet<TestTable> TestTables { get; set; }
 	public DbSet<Employee> Employees { get; set; }
 	public DbSet<Mood> Moods { get; set; }
 	public DbSet<Faq> Faqs { get; set; }

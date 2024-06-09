@@ -1,21 +1,26 @@
 ﻿using ConsoleProject.Types;
 using Telegram.Bot.Types;
 using Telegram.Bot;
+using Telegram.Bot.Types.ReplyMarkups;
 
-namespace ConsoleProject.Services;
+namespace ConsoleProject.Services.ButtonServices;
 
 public class HrButtonService : IButtonService
 {
     private readonly Dictionary<string, ButtonHandle> _handlers;
 
-    public HrButtonService()
+    public HrButtonService(FaqService faqService)
     {
         _handlers = new Dictionary<string, ButtonHandle>();
         _handlers["hr_adduser_button"] = AddUser;
         _handlers["hr_deluser_button"] = DelUser;
-        _handlers["hr_mood_button"] = GetMood;
-        _handlers["hr_getask_button"] = GetQuestion;
-        _handlers["hr_editfaq_button"] = EditFaq;
+        _handlers["hr_mood_button"]    = GetMood;
+        _handlers["hr_getask_button"]  = GetQuestion;
+
+        _handlers["hr_add_faq"] = faqService.StartFaqProcess;
+        _handlers["hr_modify_faq"] = faqService.GetAllFaqs;
+        _handlers["hr_delete_faq"] = faqService.RequestDeleteFaq;
+        _handlers["hr_back_to_main"] = BackFromFaqToMain;
     }
 
     public bool IsButtonExist(string buttonName)
@@ -87,11 +92,11 @@ public class HrButtonService : IButtonService
         await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         await botClient.SendTextMessageAsync(
             id,
-            "Нажата кнопка GetQuestion."
+            "Нажата кнопка GetOpenQuestion."
         );
     }
 
-    private async Task EditFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task BackFromFaqToMain(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -99,10 +104,26 @@ public class HrButtonService : IButtonService
 
         var id = chat.Id;
 
-        await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+        var keyboard = new InlineKeyboardMarkup(
+            new InlineKeyboardButton[][]{
+                new InlineKeyboardButton[]{
+                    InlineKeyboardButton.WithCallbackData("Добавить пользователя", "hr_adduser_button"),
+                    InlineKeyboardButton.WithCallbackData("Удалить пользователя", "hr_deluser_button")
+                },
+                new InlineKeyboardButton[]{
+                    InlineKeyboardButton.WithCallbackData("Получить график настроений пользователей", "hr_mood_button"),
+                    InlineKeyboardButton.WithCallbackData("Получить список открытых вопросов", "hr_getask_button")
+                },
+                new InlineKeyboardButton[]{
+                    InlineKeyboardButton.WithCallbackData("Редактировать FAQ", "hr_editfaq_button")
+                }
+            }
+        );
+
         await botClient.SendTextMessageAsync(
-            id,
-            "Нажата кнопка EditFaq."
+            chat.Id, 
+            "Основное меню HR", 
+            replyMarkup: keyboard
         );
     }
 }

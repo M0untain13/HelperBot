@@ -1,25 +1,14 @@
 using System.Text;
 using ConsoleProject.Models;
+using ConsoleProject.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace ConsoleProject.Services;
 
-
-
 public class FaqService
 {
-    private class FaqData
-    {
-        public string Question = "";
-        public string Answer = "";
-
-        public void Clear()
-        {
-            Question = "";
-            Answer = "";
-        }
-    }
+    
     
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
@@ -83,8 +72,14 @@ public class FaqService
         _context.SaveChanges();
     }
 
-    public async Task GetAllFaqs(ITelegramBotClient botClient, long chatId)
+    public async Task GetAllFaqs(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
+        var chat = callbackQuery.Message?.Chat;
+        if (chat is null)
+            return;
+
+        var id = chat.Id;
+
         var faqs = _context.Faqs.ToList();
         if (faqs.Any())
         {
@@ -92,7 +87,7 @@ public class FaqService
             int index = 1;
             
             var selectionMap = new Dictionary<int, int>();
-            _faqSelections[chatId] = selectionMap;
+            _faqSelections[id] = selectionMap;
             
             foreach (var faq in faqs)
             {
@@ -102,11 +97,11 @@ public class FaqService
                 index++;
             }
 
-            _responseService.WaitResponse(chatId, HandleFaqSelectionForEditing);
-            await botClient.SendTextMessageAsync(chatId, sb.ToString());
+            _responseService.WaitResponse(id, HandleFaqSelectionForEditing);
+            await botClient.SendTextMessageAsync(id, sb.ToString());
         }
         else
-            await botClient.SendTextMessageAsync(chatId, "В базе данных пока нет вопросов.");
+            await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов.");
     }
 
     private async Task HandleFaqSelectionForEditing(ITelegramBotClient botClient, Message message)
@@ -174,8 +169,14 @@ public class FaqService
         }
     }
 
-    public async Task RequestDeleteFaq(ITelegramBotClient botClient, long chatId)
+    public async Task RequestDeleteFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
+        var chat = callbackQuery.Message?.Chat;
+        if (chat is null)
+            return;
+
+        var id = chat.Id;
+
         var faqs = _context.Faqs.ToList();
         if (faqs.Any())
         {
@@ -183,7 +184,7 @@ public class FaqService
             int index = 1;
 
             var selectionMap = new Dictionary<int, int>();
-            _faqSelections[chatId] = selectionMap;
+            _faqSelections[id] = selectionMap;
 
             foreach (var faq in faqs)
             {
@@ -193,11 +194,11 @@ public class FaqService
                 index++;
             }
 
-            _responseService.WaitResponse(chatId, HandleFaqDeleteSelection);
-            await botClient.SendTextMessageAsync(chatId, sb.ToString());
+            _responseService.WaitResponse(id, HandleFaqDeleteSelection);
+            await botClient.SendTextMessageAsync(id, sb.ToString());
         }
         else
-            await botClient.SendTextMessageAsync(chatId, "В базе данных пока нет вопросов");
+            await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов");
     }
 
     private async Task HandleFaqDeleteSelection(ITelegramBotClient botClient, Message message)
