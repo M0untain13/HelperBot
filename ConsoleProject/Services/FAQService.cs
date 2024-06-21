@@ -8,8 +8,6 @@ namespace ConsoleProject.Services;
 
 public class FaqService
 {
-    
-    
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
     private readonly Dictionary<long, FaqData> _faqData;
