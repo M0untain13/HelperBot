@@ -6,11 +6,12 @@ namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	private readonly Dictionary<long, (Queue<Action>, Queue<MessageHandle>)> _waitingForResponse;
+	// TODO: Там где используется мьютекс, ввести возможность отмены, если слишком долго заблочен
+	private readonly Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)> _waitingForResponse;
 
 	public ResponseService()
 	{
-		_waitingForResponse = new Dictionary<long, (Queue<Action>, Queue<MessageHandle>)>();
+		_waitingForResponse = new Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)>();
 	}
 
 	public bool IsResponseExpected(long id)
@@ -32,11 +33,16 @@ public class ResponseService
 
 		if (IsResponseExpected(id))
 		{
-			await _waitingForResponse[id].Item2.Dequeue().Invoke(botClient, message);
-			if(_waitingForResponse[id].Item1.TryDequeue(out var action))
+			await _waitingForResponse[id].Item3.Dequeue().Invoke(botClient, message);
+			if(_waitingForResponse[id].Item2.TryDequeue(out var action))
 			{
-				action.Invoke();
+				await action.ConfigureAwait(false);
 			}
+			else
+			{
+				// Завершаем цепочку действий
+                _waitingForResponse[id].Item1.ReleaseMutex();
+            }
 			return true;
 		}
 
@@ -50,15 +56,18 @@ public class ResponseService
     /// <param name="id"> Телеграмм ID пользователя. </param>
     /// <param name="action"> Действие, которое совершается перед ожиданием ответа. </param>
     /// <param name="handle"> Метод, ожидающий получение ответа. </param>
-    public void AddActionForWait(long id, Action action, MessageHandle handle)
+    public void AddActionForWait(long id, Task action, MessageHandle handle)
 	{
 		if (!IsResponseExpected(id))
 		{
-			_waitingForResponse[id] = (new Queue<Action>(), new Queue<MessageHandle>());
+			_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
 		}
 
-		_waitingForResponse[id].Item1.Enqueue(action);
-		_waitingForResponse[id].Item2.Enqueue(handle);
+		// Если мьютекс закрыт, значит выполняется цепочка действий или добавляется действие в цепочку
+		_waitingForResponse[id].Item1.WaitOne();
+        _waitingForResponse[id].Item2.Enqueue(action);
+		_waitingForResponse[id].Item3.Enqueue(handle);
+        _waitingForResponse[id].Item1.ReleaseMutex();
     }
 
     /// <summary>
@@ -67,12 +76,14 @@ public class ResponseService
     /// </summary>
     /// <param name="id"> Телеграмм ID пользователя. </param>
     /// <returns> true - если очередь существует, иначе false </returns>
-    public bool StartActions(long id)
+    public async Task<bool> StartActionsAsync(long id)
 	{
 		if (!IsResponseExpected(id))
 			return false;
 
-		_waitingForResponse[id].Item1.Dequeue().Invoke();
+        // Стартуем цепочку действий
+        _waitingForResponse[id].Item1.WaitOne();
+        await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
 		return true;
     }
 }
