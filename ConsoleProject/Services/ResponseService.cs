@@ -41,49 +41,52 @@ public class ResponseService
 			else
 			{
 				// Завершаем цепочку действий
-                _waitingForResponse[id].Item1.ReleaseMutex();
-            }
+				_waitingForResponse[id].Item1.ReleaseMutex();
+			}
 			return true;
 		}
 
 		return false;
 	}
 
-    /// <summary>
-    /// Добавить в очередь действие, которое должно ждать ответа от пользователя.
-    /// После того, как все действия были добавлены в очередь, нужно вызвать метод StartActions.
-    /// </summary>
-    /// <param name="id"> Телеграмм ID пользователя. </param>
-    /// <param name="action"> Действие, которое совершается перед ожиданием ответа. </param>
-    /// <param name="handle"> Метод, ожидающий получение ответа. </param>
-    public void AddActionForWait(long id, Task action, MessageHandle handle)
+	/// <summary>
+	/// Добавить в очередь действие, которое должно ждать ответа от пользователя.
+	/// После того, как все действия были добавлены в очередь, нужно вызвать метод StartActions.
+	/// </summary>
+	/// <param name="id"> Телеграмм ID пользователя. </param>
+	/// <param name="action"> Действие, которое совершается перед ожиданием ответа. </param>
+	/// <param name="handle"> Метод, ожидающий получение ответа. </param>
+	public async Task AddActionForWaitAsync(long id, Task action, MessageHandle handle)
 	{
-		if (!IsResponseExpected(id))
+		await Task.Run(() =>
 		{
-			_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
-		}
+			if (!IsResponseExpected(id))
+			{
+				_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
+			}
 
-		// Если мьютекс закрыт, значит выполняется цепочка действий или добавляется действие в цепочку
-		_waitingForResponse[id].Item1.WaitOne();
-        _waitingForResponse[id].Item2.Enqueue(action);
-		_waitingForResponse[id].Item3.Enqueue(handle);
-        _waitingForResponse[id].Item1.ReleaseMutex();
-    }
+			// Если мьютекс закрыт, значит выполняется цепочка действий или добавляется действие в цепочку
+			_waitingForResponse[id].Item1.WaitOne();
+			_waitingForResponse[id].Item2.Enqueue(action);
+			_waitingForResponse[id].Item3.Enqueue(handle);
+			_waitingForResponse[id].Item1.ReleaseMutex();
+		});
+	}
 
-    /// <summary>
-    /// Вызывает первое действие в очереди.
-    /// Этот метод нужно вызывать только после метода AddActionForWait.
-    /// </summary>
-    /// <param name="id"> Телеграмм ID пользователя. </param>
-    /// <returns> true - если очередь существует, иначе false </returns>
-    public async Task<bool> StartActionsAsync(long id)
+	/// <summary>
+	/// Вызывает первое действие в очереди.
+	/// Этот метод нужно вызывать только после метода AddActionForWait.
+	/// </summary>
+	/// <param name="id"> Телеграмм ID пользователя. </param>
+	/// <returns> true - если очередь существует, иначе false </returns>
+	public async Task<bool> StartActionsAsync(long id)
 	{
 		if (!IsResponseExpected(id))
 			return false;
 
-        // Стартуем цепочку действий
-        _waitingForResponse[id].Item1.WaitOne();
-        await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
+		// Стартуем цепочку действий
+		_waitingForResponse[id].Item1.WaitOne();
+		await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
 		return true;
-    }
+	}
 }
