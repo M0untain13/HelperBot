@@ -32,7 +32,7 @@ public class Program
 					.AddSingleton<HrButtonService>()
 					.AddSingleton<FaqService>()
 					.AddSingleton<UserButtonService>()
-                    .AddSingleton<Interviewer>()
+                    .AddSingleton<SurveyService>()
                     .AddSingleton<Bot>();
 			}
 		);
