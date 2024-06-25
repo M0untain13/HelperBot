@@ -56,7 +56,7 @@ public class ResponseService
     /// <param name="id"> Телеграмм ID пользователя. </param>
     /// <param name="action"> Действие, которое совершается перед ожиданием ответа. </param>
     /// <param name="handle"> Метод, ожидающий получение ответа. </param>
-    public void AddActionForWait(long id, Task action, MessageHandle handle)
+    public void AddActionForWait(long id, Task action, MessageHandle? handle)
 	{
 		if (!IsResponseExpected(id))
 		{
