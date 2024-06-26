@@ -57,12 +57,13 @@ public class FaqService
 		var text = message.Text;
 		if (user is null || text is null)
 			return;
+		_faqData[chatId].Question = text;
 
-		await Task.Run( // По приколу решил сделать так :)
-			() => {
-				_faqData[chatId].Question = text;
-			}
-		);
+		Task task = new Task(async () =>
+		{
+			await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
+		});
+		_responseService.AddActionForWait(chatId, task, SetAnswer);
 	}
 	
 	private async Task SetAnswer(ITelegramBotClient botClient, Message message)
@@ -75,18 +76,21 @@ public class FaqService
 
 		_faqData[chatId].Answer = text;
 
-		SaveFaq(chatId, _faqData[chatId].Question, _faqData[chatId].Answer);
-		await botClient.SendTextMessageAsync(chatId, "Ваш вопрос и ответ успешно сохранены.");
-
-		_faqData[chatId].Clear();
-		_faqData.Remove(chatId);
+		Task task = new Task(async () =>
+		{
+			await SaveFaq(chatId, _faqData[chatId].Question, _faqData[chatId].Answer);
+			await botClient.SendTextMessageAsync(chatId, "Ваш вопрос и ответ успешно сохранены.");
+			_faqData[chatId].Clear();
+			_faqData.Remove(chatId);
+		});
+		_responseService.AddActionForWait(chatId, task, null);
 	}
 
-	private void SaveFaq(long userId, string question, string answer)
+	private async Task SaveFaq(long userId, string question, string answer)
 	{
 		var faq = new Faq(question, answer);
 		_context.Faqs.Add(faq);
-		_context.SaveChanges();
+		await _context.SaveChangesAsync();
 	}
 
 	public async Task GetAllFaqs(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -114,9 +118,14 @@ public class FaqService
 				index++;
 			}
 
-			_responseService.WaitResponse(id, HandleFaqSelectionForEditing);
-			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(id, sb.ToString());
+			Task task = new Task(async () =>
+			{
+				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+				await botClient.SendTextMessageAsync(id, sb.ToString());
+			});
+			_responseService.AddActionForWait(chat.Id, task, HandleFaqSelectionForEditing);
+			await _responseService.StartActionsAsync(chat.Id);
+
 		}
 		else
 		{
@@ -135,10 +144,12 @@ public class FaqService
 			var faq = _context.Faqs.Find(faqId);
 			if (faq != null)
 			{
-				await botClient.SendTextMessageAsync(chatId,
+				Task task = new Task(async () =>
+				{
+					await botClient.SendTextMessageAsync(chatId,
 					$"Текущий вопрос: {faq.Question}\n Текущий ответ: {faq.Answer}\n Введите новый вопрос:");
-				_responseService.WaitResponse(chatId,
-					(botClient, context) => HandleEditQuestion(botClient, context, faqId));
+				});
+				_responseService.AddActionForWait(chatId, task, (client, context) => HandleEditQuestion(client, context, faqId));
 			}
 			else
 				await botClient.SendTextMessageAsync(chatId, "Выбранный FAQ не найден");
@@ -151,8 +162,11 @@ public class FaqService
 	{
 		var chatId = message.Chat.Id;
 		var newQuestion = message.Text;
-		_responseService.WaitResponse(chatId, (botClient, context) => HandleEditAnswer(botClient, context, faqId, newQuestion));
-		await botClient.SendTextMessageAsync(chatId, "Введите новый ответ:");
+		Task task = new Task(async () =>
+		{
+			await botClient.SendTextMessageAsync(chatId, "Введите новый ответ:");
+		});
+		_responseService.AddActionForWait(chatId, task, (client, context) => HandleEditAnswer(botClient, context, faqId, newQuestion));
 	}
 
 	private async Task HandleEditAnswer(ITelegramBotClient botClient, Message message, int oldFaqId, string newQuestion)
@@ -160,35 +174,39 @@ public class FaqService
 		var chatId = message.Chat.Id;
 		var newAnswer = message.Text;
 
-		using (var transaction = _context.Database.BeginTransaction())
+		Task task = new Task(async () =>
 		{
-			try
+			using (var transaction = _context.Database.BeginTransaction())
 			{
-				var newFaq = new Faq(newQuestion, newAnswer);
-				_context.Faqs.Add(newFaq);
-				await _context.SaveChangesAsync();
-
-				var faqToDelete = _context.Faqs.Find(oldFaqId);
-				if (faqToDelete != null)
+				try
 				{
-					_context.Faqs.Remove(faqToDelete);
+					var newFaq = new Faq(newQuestion, newAnswer);
+					_context.Faqs.Add(newFaq);
 					await _context.SaveChangesAsync();
-					_context.ClearContext();
-					_faqSelections[chatId].Clear();
-				}
-				else
-					await botClient.SendTextMessageAsync(chatId, "Старый FAQ не найден для удаления.");
 
-				transaction.Commit();
-				await botClient.SendTextMessageAsync(chatId, "Старый FAQ удален, новый добавлен.");
+					var faqToDelete = _context.Faqs.Find(oldFaqId);
+					if (faqToDelete != null)
+					{
+						_context.Faqs.Remove(faqToDelete);
+						await _context.SaveChangesAsync();
+						_context.ClearContext();
+						_faqSelections[chatId].Clear();
+					}
+					else
+						await botClient.SendTextMessageAsync(chatId, "Старый FAQ не найден для удаления.");
+
+					transaction.Commit();
+					await botClient.SendTextMessageAsync(chatId, "Старый FAQ удален, новый добавлен.");
+				}
+				catch (Exception e)
+				{
+					transaction.Rollback();
+					Console.WriteLine($"Ошибка при обновлении FAQ {e.Message}");
+					await botClient.SendTextMessageAsync(chatId, "Произошла ошибка при обновлении FAQ");
+				}
 			}
-			catch (Exception e)
-			{
-				transaction.Rollback();
-				Console.WriteLine($"Ошибка при обновлении FAQ {e.Message}");
-				await botClient.SendTextMessageAsync(chatId, "Произошла ошибка при обновлении FAQ");
-			}
-		}
+		});
+		_responseService.AddActionForWait(chatId, task, null);
 	}
 
 	public async Task RequestDeleteFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -216,9 +234,13 @@ public class FaqService
 				index++;
 			}
 
-			_responseService.WaitResponse(id, HandleFaqDeleteSelection);
-			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(id, sb.ToString());
+			Task task = new Task(async () =>
+			{
+				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+				await botClient.SendTextMessageAsync(id, sb.ToString());
+			});
+			_responseService.AddActionForWait(chat.Id, task, HandleFaqDeleteSelection);
+			await _responseService.StartActionsAsync(chat.Id);
 		}
 		else
 		{

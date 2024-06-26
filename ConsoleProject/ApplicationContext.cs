@@ -13,6 +13,7 @@ public class ApplicationContext : DbContext
 	public DbSet<Faq> Faqs { get; set; }
 	public DbSet<Position> Positions { get; set; }
 	public DbSet<Access> Accesses { get; set; }
+	public DbSet<WaitRegistration> WaitRegistrations { get; set; }
 
 	public void ClearContext()
 	{
