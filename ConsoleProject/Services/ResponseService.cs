@@ -6,7 +6,7 @@ namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	// TODO: Там где используется мьютекс, ввести возможность отмены, если слишком долго заблочен
+	// TODO: Г’Г Г¬ ГЈГ¤ГҐ ГЁГ±ГЇГ®Г«ГјГ§ГіГҐГІГ±Гї Г¬ГјГѕГІГҐГЄГ±, ГўГўГҐГ±ГІГЁ ГўГ®Г§Г¬Г®Г¦Г­Г®Г±ГІГј Г®ГІГ¬ГҐГ­Г», ГҐГ±Г«ГЁ Г±Г«ГЁГёГЄГ®Г¬ Г¤Г®Г«ГЈГ® Г§Г ГЎГ«Г®Г·ГҐГ­
 	private readonly Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)> _waitingForResponse;
 
 	public ResponseService()
@@ -20,9 +20,9 @@ public class ResponseService
 	}
 
 	/// <summary>
-	/// Запускает метод, который ожидает ответа.
+	/// Г‡Г ГЇГіГ±ГЄГ ГҐГІ Г¬ГҐГІГ®Г¤, ГЄГ®ГІГ®Г°Г»Г© Г®Г¦ГЁГ¤Г ГҐГІ Г®ГІГўГҐГІГ .
 	/// </summary>
-	/// <returns> false - если ответ не ожидается или проблемы с сообщением, иначе true </returns>
+	/// <returns> false - ГҐГ±Г«ГЁ Г®ГІГўГҐГІ Г­ГҐ Г®Г¦ГЁГ¤Г ГҐГІГ±Гї ГЁГ«ГЁ ГЇГ°Г®ГЎГ«ГҐГ¬Г» Г± Г±Г®Г®ГЎГ№ГҐГ­ГЁГҐГ¬, ГЁГ­Г Г·ГҐ true </returns>
 	public async Task<bool> ReplyAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
@@ -40,50 +40,53 @@ public class ResponseService
 			}
 			else
 			{
-				// Завершаем цепочку действий
-                _waitingForResponse[id].Item1.ReleaseMutex();
-            }
+				// Г‡Г ГўГҐГ°ГёГ ГҐГ¬ Г¶ГҐГЇГ®Г·ГЄГі Г¤ГҐГ©Г±ГІГўГЁГ©
+				_waitingForResponse[id].Item1.ReleaseMutex();
+			}
 			return true;
 		}
 
 		return false;
 	}
 
-    /// <summary>
-    /// Добавить в очередь действие, которое должно ждать ответа от пользователя.
-    /// После того, как все действия были добавлены в очередь, нужно вызвать метод StartActions.
-    /// </summary>
-    /// <param name="id"> Телеграмм ID пользователя. </param>
-    /// <param name="action"> Действие, которое совершается перед ожиданием ответа. </param>
-    /// <param name="handle"> Метод, ожидающий получение ответа. </param>
-    public void AddActionForWait(long id, Task action, MessageHandle? handle)
+	/// <summary>
+	/// Г„Г®ГЎГ ГўГЁГІГј Гў Г®Г·ГҐГ°ГҐГ¤Гј Г¤ГҐГ©Г±ГІГўГЁГҐ, ГЄГ®ГІГ®Г°Г®ГҐ Г¤Г®Г«Г¦Г­Г® Г¦Г¤Г ГІГј Г®ГІГўГҐГІГ  Г®ГІ ГЇГ®Г«ГјГ§Г®ГўГ ГІГҐГ«Гї.
+	/// ГЏГ®Г±Г«ГҐ ГІГ®ГЈГ®, ГЄГ ГЄ ГўГ±ГҐ Г¤ГҐГ©Г±ГІГўГЁГї ГЎГ»Г«ГЁ Г¤Г®ГЎГ ГўГ«ГҐГ­Г» Гў Г®Г·ГҐГ°ГҐГ¤Гј, Г­ГіГ¦Г­Г® ГўГ»Г§ГўГ ГІГј Г¬ГҐГІГ®Г¤ StartActions.
+	/// </summary>
+	/// <param name="id"> Г’ГҐГ«ГҐГЈГ°Г Г¬Г¬ ID ГЇГ®Г«ГјГ§Г®ГўГ ГІГҐГ«Гї. </param>
+	/// <param name="action"> Г„ГҐГ©Г±ГІГўГЁГҐ, ГЄГ®ГІГ®Г°Г®ГҐ Г±Г®ГўГҐГ°ГёГ ГҐГІГ±Гї ГЇГҐГ°ГҐГ¤ Г®Г¦ГЁГ¤Г Г­ГЁГҐГ¬ Г®ГІГўГҐГІГ . </param>
+	/// <param name="handle"> ГЊГҐГІГ®Г¤, Г®Г¦ГЁГ¤Г ГѕГ№ГЁГ© ГЇГ®Г«ГіГ·ГҐГ­ГЁГҐ Г®ГІГўГҐГІГ . </param>
+	public async Task AddActionForWaitAsync(long id, Task action, MessageHandle handle)
 	{
-		if (!IsResponseExpected(id))
+		await Task.Run(() =>
 		{
-			_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
-		}
+			if (!IsResponseExpected(id))
+			{
+				_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
+			}
 
-		// Если мьютекс закрыт, значит выполняется цепочка действий или добавляется действие в цепочку
-		_waitingForResponse[id].Item1.WaitOne();
-        _waitingForResponse[id].Item2.Enqueue(action);
-		_waitingForResponse[id].Item3.Enqueue(handle);
-        _waitingForResponse[id].Item1.ReleaseMutex();
-    }
+			// Г…Г±Г«ГЁ Г¬ГјГѕГІГҐГЄГ± Г§Г ГЄГ°Г»ГІ, Г§Г­Г Г·ГЁГІ ГўГ»ГЇГ®Г«Г­ГїГҐГІГ±Гї Г¶ГҐГЇГ®Г·ГЄГ  Г¤ГҐГ©Г±ГІГўГЁГ© ГЁГ«ГЁ Г¤Г®ГЎГ ГўГ«ГїГҐГІГ±Гї Г¤ГҐГ©Г±ГІГўГЁГҐ Гў Г¶ГҐГЇГ®Г·ГЄГі
+			_waitingForResponse[id].Item1.WaitOne();
+			_waitingForResponse[id].Item2.Enqueue(action);
+			_waitingForResponse[id].Item3.Enqueue(handle);
+			_waitingForResponse[id].Item1.ReleaseMutex();
+		});
+	}
 
-    /// <summary>
-    /// Вызывает первое действие в очереди.
-    /// Этот метод нужно вызывать только после метода AddActionForWait.
-    /// </summary>
-    /// <param name="id"> Телеграмм ID пользователя. </param>
-    /// <returns> true - если очередь существует, иначе false </returns>
-    public async Task<bool> StartActionsAsync(long id)
+	/// <summary>
+	/// Г‚Г»Г§Г»ГўГ ГҐГІ ГЇГҐГ°ГўГ®ГҐ Г¤ГҐГ©Г±ГІГўГЁГҐ Гў Г®Г·ГҐГ°ГҐГ¤ГЁ.
+	/// ГќГІГ®ГІ Г¬ГҐГІГ®Г¤ Г­ГіГ¦Г­Г® ГўГ»Г§Г»ГўГ ГІГј ГІГ®Г«ГјГЄГ® ГЇГ®Г±Г«ГҐ Г¬ГҐГІГ®Г¤Г  AddActionForWait.
+	/// </summary>
+	/// <param name="id"> Г’ГҐГ«ГҐГЈГ°Г Г¬Г¬ ID ГЇГ®Г«ГјГ§Г®ГўГ ГІГҐГ«Гї. </param>
+	/// <returns> true - ГҐГ±Г«ГЁ Г®Г·ГҐГ°ГҐГ¤Гј Г±ГіГ№ГҐГ±ГІГўГіГҐГІ, ГЁГ­Г Г·ГҐ false </returns>
+	public async Task<bool> StartActionsAsync(long id)
 	{
 		if (!IsResponseExpected(id))
 			return false;
 
-        // Стартуем цепочку действий
-        _waitingForResponse[id].Item1.WaitOne();
-        await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
+		// Г‘ГІГ Г°ГІГіГҐГ¬ Г¶ГҐГЇГ®Г·ГЄГі Г¤ГҐГ©Г±ГІГўГЁГ©
+		_waitingForResponse[id].Item1.WaitOne();
+		await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
 		return true;
-    }
+	}
 }

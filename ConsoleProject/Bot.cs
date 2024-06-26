@@ -4,6 +4,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using ConsoleProject.Services.UpdateHandlerServices;
+using ConsoleProject.Services;
 
 namespace ConsoleProject;
 
@@ -11,12 +12,15 @@ public class Bot
 {
 	private readonly MessageHandlerService _messageHandlerService;
 	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
+	private readonly SurveyService _surveyService;
 
-	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService)
+	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService, SurveyService interviewer)
 	{
 		_messageHandlerService = messageHandlerService;
 		_callbackQueryHandlerService = callbackQueryHandlerService;
-	}
+        _surveyService = interviewer;
+
+    }
 
 	public async Task StartAsync(string token)
 	{
@@ -33,6 +37,7 @@ public class Bot
 		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
 		var me = await botClient.GetMeAsync();
 		Console.WriteLine($"{me.FirstName} запущен!");
+		await _surveyService.StartAsync(botClient);
 		await Task.Delay(-1);
 	}
 	
