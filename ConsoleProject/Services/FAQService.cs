@@ -34,7 +34,7 @@ public class FaqService
                 await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
 				await botClient.SendTextMessageAsync(chatId, "Пожалуйства введите текст вопроса:");
 			});
-			_responseService.AddActionForWait(
+			await _responseService.AddActionForWaitAsync(
 				chatId,		// Телеграм ID
 				task,		// Это действие, которое совершается перед ожиданием ответа
 				SetQuestion // Это действие, которое совершается при получении ответа
@@ -44,7 +44,7 @@ public class FaqService
 			{
                 await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
 			});
-			_responseService.AddActionForWait(chatId, task, SetAnswer);
+			await _responseService.AddActionForWaitAsync(chatId, task, SetAnswer);
 
 			await _responseService.StartActionsAsync(chatId);
 		}
@@ -63,7 +63,7 @@ public class FaqService
 		{
 			await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
 		});
-		_responseService.AddActionForWait(chatId, task, SetAnswer);
+		await _responseService.AddActionForWaitAsync(chatId, task, SetAnswer);
 	}
 	
 	private async Task SetAnswer(ITelegramBotClient botClient, Message message)
@@ -83,7 +83,7 @@ public class FaqService
 			_faqData[chatId].Clear();
 			_faqData.Remove(chatId);
 		});
-		_responseService.AddActionForWait(chatId, task, null);
+        await _responseService.AddActionForWaitAsync(chatId, task, null);
 	}
 
 	private async Task SaveFaq(long userId, string question, string answer)
@@ -123,7 +123,7 @@ public class FaqService
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
 				await botClient.SendTextMessageAsync(id, sb.ToString());
 			});
-			_responseService.AddActionForWait(chat.Id, task, HandleFaqSelectionForEditing);
+            await _responseService.AddActionForWaitAsync(chat.Id, task, HandleFaqSelectionForEditing);
 			await _responseService.StartActionsAsync(chat.Id);
 
 		}
@@ -149,7 +149,7 @@ public class FaqService
 					await botClient.SendTextMessageAsync(chatId,
 					$"Текущий вопрос: {faq.Question}\n Текущий ответ: {faq.Answer}\n Введите новый вопрос:");
 				});
-				_responseService.AddActionForWait(chatId, task, (client, context) => HandleEditQuestion(client, context, faqId));
+                await _responseService.AddActionForWaitAsync(chatId, task, (client, context) => HandleEditQuestion(client, context, faqId));
 			}
 			else
 				await botClient.SendTextMessageAsync(chatId, "Выбранный FAQ не найден");
@@ -166,7 +166,7 @@ public class FaqService
 		{
 			await botClient.SendTextMessageAsync(chatId, "Введите новый ответ:");
 		});
-		_responseService.AddActionForWait(chatId, task, (client, context) => HandleEditAnswer(botClient, context, faqId, newQuestion));
+        await _responseService.AddActionForWaitAsync(chatId, task, (client, context) => HandleEditAnswer(botClient, context, faqId, newQuestion));
 	}
 
 	private async Task HandleEditAnswer(ITelegramBotClient botClient, Message message, int oldFaqId, string newQuestion)
@@ -206,7 +206,7 @@ public class FaqService
 				}
 			}
 		});
-		_responseService.AddActionForWait(chatId, task, null);
+		await _responseService.AddActionForWaitAsync(chatId, task, null);
 	}
 
 	public async Task RequestDeleteFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -239,7 +239,7 @@ public class FaqService
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
 				await botClient.SendTextMessageAsync(id, sb.ToString());
 			});
-			_responseService.AddActionForWait(chat.Id, task, HandleFaqDeleteSelection);
+			await _responseService.AddActionForWaitAsync(chat.Id, task, HandleFaqDeleteSelection);
 			await _responseService.StartActionsAsync(chat.Id);
 		}
 		else

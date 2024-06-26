@@ -12,8 +12,8 @@ namespace ConsoleProject.Models
             Name = name;
             Surname = surname;
         }
-        
-        [Required]
+
+        [Key]
         [MaxLength(64)]
         [Column("login")]
         public string Login { get; set; }
