@@ -16,7 +16,7 @@ public class ResponseService
 
 	public bool IsResponseExpected(long id)
 	{
-		return _waitingForResponse.ContainsKey(id);
+		return _waitingForResponse.ContainsKey(id) && _waitingForResponse[id].Item3.Count > 0;
 	}
 
 	/// <summary>
@@ -25,6 +25,8 @@ public class ResponseService
 	/// <returns> false - åñëè îòâåò íå îæèäàåòñÿ èëè ïðîáëåìû ñ ñîîáùåíèåì, èíà÷å true </returns>
 	public async Task<bool> ReplyAsync(ITelegramBotClient botClient, Message message)
 	{
+		Console.WriteLine("1. ReplyAsync");
+
 		var user = message.From;
 		if (user is null)
 			return false;
@@ -33,10 +35,12 @@ public class ResponseService
 
 		if (IsResponseExpected(id))
 		{
+			Console.WriteLine($"2. ReplyAsync");
 			await _waitingForResponse[id].Item3.Dequeue().Invoke(botClient, message);
+			Console.WriteLine($"3. ReplyAsync");
 			if(_waitingForResponse[id].Item2.TryDequeue(out var action))
 			{
-				await action.ConfigureAwait(false);
+				action.RunSynchronously();
 			}
 			else
 			{
@@ -65,11 +69,13 @@ public class ResponseService
 				_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
 			}
 
+			Console.WriteLine("1. AddActionForWaitAsync");
 			// Åñëè ìüþòåêñ çàêðûò, çíà÷èò âûïîëíÿåòñÿ öåïî÷êà äåéñòâèé èëè äîáàâëÿåòñÿ äåéñòâèå â öåïî÷êó
 			_waitingForResponse[id].Item1.WaitOne();
 			_waitingForResponse[id].Item2.Enqueue(action);
 			_waitingForResponse[id].Item3.Enqueue(handle);
 			_waitingForResponse[id].Item1.ReleaseMutex();
+			Console.WriteLine("2. AddActionForWaitAsync");
 		});
 	}
 
@@ -85,8 +91,10 @@ public class ResponseService
 			return false;
 
 		// Ñòàðòóåì öåïî÷êó äåéñòâèé
+		Console.WriteLine("1. StartActionsAsync");
 		_waitingForResponse[id].Item1.WaitOne();
-		await _waitingForResponse[id].Item2.Dequeue().ConfigureAwait(false);
+		_waitingForResponse[id].Item2.Dequeue().RunSynchronously();
+		Console.WriteLine("2. StartActionsAsync");
 		return true;
 	}
 }

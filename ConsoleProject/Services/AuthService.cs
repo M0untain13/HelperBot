@@ -41,12 +41,20 @@ public class AuthService
             return;
         
         _registrationData[id] = new UserData();
-
-        Task task = new Task(async () =>
+        
+        Task task;
+        task = new Task(async () =>
         {
+            Console.WriteLine("1");
             await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
         });
         await _responseService.AddActionForWaitAsync(id, task, SetName);
+        task = new Task(async () =>
+        {
+            Console.WriteLine("2");
+            await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
+        });
+        await _responseService.AddActionForWaitAsync(id, task, SetSurname);
         await _responseService.StartActionsAsync(id);
     }
 
@@ -61,12 +69,6 @@ public class AuthService
 
         _registrationData[id].name = text;
         _registrationData[id].username = user.Username ?? "Н/Д";
-
-        Task task = new Task(async () =>
-        {
-            await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
-        });
-        await _responseService.AddActionForWaitAsync(id, task, SetSurname);
     }
     
     private async Task SetSurname(ITelegramBotClient botClient, Message message)
@@ -80,11 +82,8 @@ public class AuthService
 
         _registrationData[id].surname = text;
 
-        Task task = new Task(async () =>
-        {
-            RegisterUser(id, _registrationData[id].name, _registrationData[id].surname, _registrationData[id].username);
-        });
-        await _responseService.AddActionForWaitAsync(id, task, null);
+        RegisterUser(id, _registrationData[id].name, _registrationData[id].surname, _registrationData[id].username);
+
         await botClient.SendTextMessageAsync(id, "Регистрация завершена!");
         
         _registrationData[id].Clear();
