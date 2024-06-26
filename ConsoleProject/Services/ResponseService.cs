@@ -6,7 +6,6 @@ namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	// TODO: Òàì ãäå èñïîëüçóåòñÿ ìüþòåêñ, ââåñòè âîçìîæíîñòü îòìåíû, åñëè ñëèøêîì äîëãî çàáëî÷åí
 	private readonly Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)> _waitingForResponse;
 
 	public ResponseService()
@@ -20,13 +19,11 @@ public class ResponseService
 	}
 
 	/// <summary>
-	/// Çàïóñêàåò ìåòîä, êîòîðûé îæèäàåò îòâåòà.
+	/// Обработать ответ.
 	/// </summary>
-	/// <returns> false - åñëè îòâåò íå îæèäàåòñÿ èëè ïðîáëåìû ñ ñîîáùåíèåì, èíà÷å true </returns>
+	/// <returns> true - обработано, иначе false </returns>
 	public async Task<bool> ReplyAsync(ITelegramBotClient botClient, Message message)
 	{
-		Console.WriteLine("1. ReplyAsync");
-
 		var user = message.From;
 		if (user is null)
 			return false;
@@ -35,16 +32,13 @@ public class ResponseService
 
 		if (IsResponseExpected(id))
 		{
-			Console.WriteLine($"2. ReplyAsync");
 			await _waitingForResponse[id].Item3.Dequeue().Invoke(botClient, message);
-			Console.WriteLine($"3. ReplyAsync");
 			if(_waitingForResponse[id].Item2.TryDequeue(out var action))
 			{
 				action.RunSynchronously();
 			}
 			else
 			{
-				// Çàâåðøàåì öåïî÷êó äåéñòâèé
 				_waitingForResponse[id].Item1.ReleaseMutex();
 			}
 			return true;
@@ -54,12 +48,12 @@ public class ResponseService
 	}
 
 	/// <summary>
-	/// Äîáàâèòü â î÷åðåäü äåéñòâèå, êîòîðîå äîëæíî æäàòü îòâåòà îò ïîëüçîâàòåëÿ.
-	/// Ïîñëå òîãî, êàê âñå äåéñòâèÿ áûëè äîáàâëåíû â î÷åðåäü, íóæíî âûçâàòü ìåòîä StartActions.
+	/// Добавить действие в очередь.
+	/// После этого метода нужно вызвать StartActions.
 	/// </summary>
-	/// <param name="id"> Òåëåãðàìì ID ïîëüçîâàòåëÿ. </param>
-	/// <param name="action"> Äåéñòâèå, êîòîðîå ñîâåðøàåòñÿ ïåðåä îæèäàíèåì îòâåòà. </param>
-	/// <param name="handle"> Ìåòîä, îæèäàþùèé ïîëó÷åíèå îòâåòà. </param>
+	/// <param name="id"> Telegram ID. </param>
+	/// <param name="action"> Действие перед ожиданием ответа. </param>
+	/// <param name="handle"> Обработчик ответа. </param>
 	public async Task AddActionForWaitAsync(long id, Task action, MessageHandle handle)
 	{
 		await Task.Run(() =>
@@ -69,32 +63,26 @@ public class ResponseService
 				_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
 			}
 
-			Console.WriteLine("1. AddActionForWaitAsync");
-			// Åñëè ìüþòåêñ çàêðûò, çíà÷èò âûïîëíÿåòñÿ öåïî÷êà äåéñòâèé èëè äîáàâëÿåòñÿ äåéñòâèå â öåïî÷êó
 			_waitingForResponse[id].Item1.WaitOne();
 			_waitingForResponse[id].Item2.Enqueue(action);
 			_waitingForResponse[id].Item3.Enqueue(handle);
 			_waitingForResponse[id].Item1.ReleaseMutex();
-			Console.WriteLine("2. AddActionForWaitAsync");
 		});
 	}
 
 	/// <summary>
-	/// Âûçûâàåò ïåðâîå äåéñòâèå â î÷åðåäè.
-	/// Ýòîò ìåòîä íóæíî âûçûâàòü òîëüêî ïîñëå ìåòîäà AddActionForWait.
+	/// Начать цепочку действий.
+	/// Использовать только после AddActionForWait.
 	/// </summary>
-	/// <param name="id"> Òåëåãðàìì ID ïîëüçîâàòåëÿ. </param>
-	/// <returns> true - åñëè î÷åðåäü ñóùåñòâóåò, èíà÷å false </returns>
+	/// <param name="id"> Telegram ID. </param>
+	/// <returns> true - цепочка запущена, иначе false </returns>
 	public async Task<bool> StartActionsAsync(long id)
 	{
 		if (!IsResponseExpected(id))
 			return false;
 
-		// Ñòàðòóåì öåïî÷êó äåéñòâèé
-		Console.WriteLine("1. StartActionsAsync");
 		_waitingForResponse[id].Item1.WaitOne();
 		_waitingForResponse[id].Item2.Dequeue().RunSynchronously();
-		Console.WriteLine("2. StartActionsAsync");
 		return true;
 	}
 }
