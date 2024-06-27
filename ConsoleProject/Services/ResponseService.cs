@@ -27,7 +27,7 @@ public class ResponseService
 
 	public bool IsResponseExpected(long id)
 	{
-		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State != SessionState.Close);
+		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State == SessionState.Open);
 	}
 
 	public void Reply(ITelegramBotClient botClient, Message message)
@@ -42,10 +42,6 @@ public class ResponseService
 
 		if (session is null)
 			return;
-
-		// TODO: возможно тут стоит сделать выход из цикла, если слишком долгое ожидание
-		while(session.State == SessionState.Wait)
-			Thread.Sleep(1000);
 
 		session.InvokeHandle(botClient, message);
 	}
@@ -65,11 +61,13 @@ public class ResponseService
 			var session = _sessions[id][0];
 			switch (session.State)
 			{
+				case SessionState.Open:
+					return session;
+				case SessionState.Wait:
+					return null;
 				case SessionState.Close:
 					_sessions[id].Remove(session);
 					break;
-				default:
-					return session;
 			}
 		}
 	}

@@ -14,7 +14,7 @@ public class SurveyService
 
 	public SurveyService(ResponseService responseService, ApplicationContext context)
 	{
-		_pollingDelay = 10000; // TODO: пока что сделал опрос каждые 10 секунд, потом можно будет сделать проброс delay через аргумент конструктора и хост билдер
+		_pollingDelay = 1000*30; // TODO: пока что сделал опрос каждые 30 секунд, потом можно будет сделать проброс delay через аргумент конструктора и хост билдер
 		_responseService = responseService;
 		_context = context;
 	}
@@ -73,7 +73,9 @@ public class SurveyService
 				id,
 				"Спасибо за ответ!"
 			);
-		}
+            var session = _responseService.GetSessionProxy(id);
+			session?.Close();
+        }
 		else
 		{
 			var task = new Task(async () =>
