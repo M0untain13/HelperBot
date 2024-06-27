@@ -1,4 +1,4 @@
-﻿namespace ConsoleProject.Types;
+﻿namespace ConsoleProject.Types.Classes;
 
 public class FaqData
 {
