@@ -1,11 +1,14 @@
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 
-namespace ConsoleProject.Services;
+namespace ConsoleProject.Services.UpdateHandlerServices;
 
 public class MessageHandlerService
 {
+    private readonly ILogger _logger;
     private readonly UserService _userService;
     private readonly AuthService _authService;
     private readonly ResponseService _responseService;
@@ -13,9 +16,15 @@ public class MessageHandlerService
 
     private readonly Dictionary<long, (string State, string Question)> _userStates =
         new Dictionary<long, (string, string)>();
-    
-    public MessageHandlerService(UserService userService, AuthService authService, ResponseService responseService)
+
+    public MessageHandlerService(
+        UserService userService, 
+        AuthService authService, 
+        ResponseService responseService,
+        ILogger logger
+        )
     {
+        _logger = logger;
         _userService = userService;
         _authService = authService;
         _responseService = responseService;
@@ -63,20 +72,20 @@ public class MessageHandlerService
             }
         );
     }
-    
+
     public async Task HandleAsync(ITelegramBotClient botClient, Update update)
     {
         var message = update.Message;
         if (message is null)
             return;
-        
+
         var user = message.From;
         if (user is null)
             return;
-        
+
         var userId = user.Id;
         var chatId = message.Chat.Id;
-        
+
         // Ожидается ли какой-то ответ от пользователя?
         if (_responseService.IsResponseExpected(userId))
         {
@@ -97,14 +106,14 @@ public class MessageHandlerService
             var text = message.Text;
             if (text is null)
                 return;
-            
-            Console.WriteLine($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
-            
+
+            _logger.LogInformation($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
+
             var role = _userService.GetUserRole(userId) ?? "";
 
             if (!_keyboards.ContainsKey(role))
                 throw new Exception($"Нет инструкций для роли \"{role}\".");
-            
+
             await botClient.SendTextMessageAsync(
                 chat.Id,
                 "Меню",
@@ -119,7 +128,7 @@ public class MessageHandlerService
             return _keyboards[key];
         else
         {
-            Console.WriteLine($"Клавиатура с ключем {key} не найдена.");
+            _logger.LogInformation($"Клавиатура с ключем {key} не найдена.");
             return null;
         }
     }

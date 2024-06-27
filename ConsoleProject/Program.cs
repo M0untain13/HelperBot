@@ -2,6 +2,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ConsoleProject.Services;
+using ConsoleProject.Services.ButtonServices;
+using ConsoleProject.Services.UpdateHandlerServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConsoleProject;
 
@@ -18,18 +22,46 @@ public class Program
 	private static IHostBuilder CreateHostBuilder(string[] args) =>
 		Host.CreateDefaultBuilder(args).ConfigureServices(
 			(services) => {
-				services.AddDbContext<ApplicationContext>(
-					options =>
-						options.UseNpgsql(
-							"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234")
-				);
-				services.AddSingleton<UserService>();
-				services.AddSingleton<AuthService>();
-				services.AddSingleton<ResponseService>();
-				services.AddSingleton<MessageHandlerService>();
-				services.AddSingleton<CallbackQueryHandlerService>();
-				services.AddSingleton<FaqService>();
-				services.AddSingleton<Bot>();
+				services
+					.AddDbContext<ApplicationContext>(
+						options => options
+							.UseNpgsql(
+								"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234"
+							)
+							.UseLoggerFactory(
+								LoggerFactory.Create(builder =>
+								{
+									builder.AddConsole(
+										options => {
+											options.TimestampFormat = "[HH:mm:ss] ";
+										}
+									);
+								})
+                            )
+					)
+					.AddSingleton<UserService>()
+					.AddSingleton<AuthService>()
+					.AddSingleton<ResponseService>()
+					.AddSingleton<MessageHandlerService>()
+					.AddSingleton<CallbackQueryHandlerService>()
+					.AddSingleton<HrButtonService>()
+					.AddSingleton<FaqService>()
+					.AddSingleton<UserButtonService>()
+					.AddSingleton<SurveyService>()
+					.AddSingleton<Bot>()
+					.AddSingleton(
+						_ => {
+							ILogger logger = LoggerFactory.Create(builder =>
+							{
+								builder.AddConsole(
+									options => {
+										options.TimestampFormat = "[HH:mm:ss] ";
+									}
+								);
+							}).CreateLogger<Program>();
+							return logger;
+						}
+					);
 			}
 		);
 }

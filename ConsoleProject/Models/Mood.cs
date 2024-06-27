@@ -9,7 +9,7 @@ namespace ConsoleProject.Models
         
         [Key]
         [Column("telegram_id")]
-        public int TelegramId { get; set; }
+        public long TelegramId { get; set; }
         
         [Required]
         [Column("survey_date")]

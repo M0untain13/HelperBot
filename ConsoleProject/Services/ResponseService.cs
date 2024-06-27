@@ -1,47 +1,100 @@
+﻿using ConsoleProject.Types.Classes;
+using ConsoleProject.Types.Enums;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace ConsoleProject.Services;
 
-public delegate Task UserMessageHandle(ITelegramBotClient botClient, Message message);
-
 public class ResponseService
 {
-    private readonly Dictionary<long, UserMessageHandle> _waitingForResponse;
+	private Dictionary<long, List<Session>> _sessions;
 
-    public ResponseService()
-    {
-        _waitingForResponse = new Dictionary<long, UserMessageHandle>();
-    }
+	public ResponseService()
+	{
+		_sessions = new Dictionary<long, List<Session>>();
+	}
 
-    public bool IsResponseExpected(long id)
-    {
-        return _waitingForResponse.ContainsKey(id);
-    }
+	public SessionProxy CreateSession(long id)
+	{
+		if (!_sessions.ContainsKey(id))
+			_sessions[id] = new List<Session>();
 
-    public async Task ReplyAsync(ITelegramBotClient botClient, Message message)
-    {
-        var user = message.From;
-        if (user is null)
-            return;
+		var session = new Session();
+		_sessions[id].Add(session);
 
-        var id = user.Id;
+		return new SessionProxy(session);
+	}
 
-        if (IsResponseExpected(id))
-        {
-            var handle = _waitingForResponse[id];
-            _waitingForResponse.Remove(id);
-            await handle.Invoke(botClient, message);
-        }
-            
-    }
+	public bool IsResponseExpected(long id)
+	{
+		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State == SessionState.Open);
+	}
 
-    public bool WaitResponse(long id, UserMessageHandle handle)
-    {
-        if (IsResponseExpected(id))
-            return false;
-        
-        _waitingForResponse[id] = handle;
-        return true;
-    }
+	public async Task ReplyAsync(ITelegramBotClient botClient, Message message)
+	{
+		var user = message.From;
+		if (user is null)
+			return;
+
+		var id = user.Id;
+
+		var session = await GetSessionAsync(id);
+
+		if (session is null)
+			return;
+
+		await session.InvokeHandleAsync(botClient, message);
+	}
+
+	private async Task<Session?> GetSessionAsync(long id)
+	{
+        if (!_sessions.ContainsKey(id))
+            return null;
+
+		Session? session = null;
+
+        await Task.Run(() =>
+		{
+			var isStart = true;
+            while (isStart)
+            {
+                if (_sessions[id].Count == 0)
+				{
+					session = null;
+					isStart = false;
+                }
+				else
+				{
+                    session = _sessions[id][0];
+                    switch (session.State)
+                    {
+                        case SessionState.Open:
+							isStart = false;
+							break;
+                        case SessionState.Wait:
+                            session = null;
+                            isStart = false;
+							break;
+                        case SessionState.Close:
+                            _sessions[id].Remove(session);
+                            session = null;
+                            break;
+                    }
+                }
+            }
+        });
+
+		return session;
+	}
+
+	
+	public async Task<SessionProxy?> GetSessionProxyAsync(long id)
+	{
+		var session = await GetSessionAsync(id);
+
+		if (session is null)
+			return null;
+
+		return new SessionProxy(session);
+	}
 }
