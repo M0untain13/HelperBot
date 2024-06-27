@@ -14,7 +14,7 @@ public class SurveyService
 
 	public SurveyService(ResponseService responseService, ApplicationContext context)
 	{
-		_pollingDelay = 1000*30; // TODO: пока что сделал опрос каждые 30 секунд, потом можно будет сделать проброс delay через аргумент конструктора и хост билдер
+		_pollingDelay = 1000*60*60*24; // Каждые 24 часа
 		_responseService = responseService;
 		_context = context;
 	}
@@ -37,8 +37,10 @@ public class SurveyService
 					);
 				});
                 var session = _responseService.CreateSession(id);
-                session?.Add(task, SetMood);
-                session?.Start();
+				if (session is null)
+					continue;
+                session.Add(task, SetMoodAsync);
+                await session.StartAsync();
             }
 
 			await Task.Delay(_pollingDelay);
@@ -51,7 +53,7 @@ public class SurveyService
 		_isStarted = false;
 	}
 
-	private async Task SetMood(ITelegramBotClient botClient, Message message)
+	private async Task SetMoodAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		var id = message.Chat.Id;
@@ -73,8 +75,8 @@ public class SurveyService
 				id,
 				"Спасибо за ответ!"
 			);
-            var session = _responseService.GetSessionProxy(id);
-			session?.Close();
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Close();
         }
 		else
 		{
@@ -85,9 +87,11 @@ public class SurveyService
 					"Введите значение от 1 до 5."
 				);
 			});
-            var session = _responseService.GetSessionProxy(id);
-            session?.Add(task, SetMood);
-            session?.Start();
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Add(task, SetMoodAsync);
+            if (session is null)
+                return;
+            await session.StartAsync();
         }
 	}
 }

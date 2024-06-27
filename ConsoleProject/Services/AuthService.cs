@@ -49,29 +49,32 @@ public class AuthService
         {
             await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
         });
-        session.Add(task, SetName);
+        session.Add(task, SetNameAsync);
         task = new Task(async () =>
         {
             await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
         });
-        session.Add(task, SetSurname);
-        session.Start();
+        session.Add(task, SetSurnameAsync);
+        await session.StartAsync();
     }
 
-    private async Task SetName(ITelegramBotClient botClient, Message message)
+    private async Task SetNameAsync(ITelegramBotClient botClient, Message message)
     {
         var user = message.From;
         var text = message.Text;
         if (user is null || text is null)
             return;
 
-        var id = user.Id;
+        await Task.Run(() =>
+        {
+            var id = user.Id;
 
-        _registrationData[id].name = text;
-        _registrationData[id].username = user.Username ?? "Н/Д";
+            _registrationData[id].name = text;
+            _registrationData[id].username = user.Username ?? "Н/Д";
+        });
     }
     
-    private async Task SetSurname(ITelegramBotClient botClient, Message message)
+    private async Task SetSurnameAsync(ITelegramBotClient botClient, Message message)
     {
         var user = message.From;
         var text = message.Text;
@@ -88,7 +91,8 @@ public class AuthService
         
         _registrationData[id].Clear();
         _registrationData.Remove(id);
-        _responseService.GetSessionProxy(id)?.Close();
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
     }
 
     private void RegisterUser(long userId, string name, string surname, string username)

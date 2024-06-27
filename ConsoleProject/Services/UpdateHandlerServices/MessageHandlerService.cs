@@ -89,7 +89,7 @@ public class MessageHandlerService
         // Ожидается ли какой-то ответ от пользователя?
         if (_responseService.IsResponseExpected(userId))
         {
-            _responseService.Reply(botClient, message);
+            await _responseService.ReplyAsync(botClient, message);
         }
         // Надо ли регать юзера?
         else if (!_authService.IsUserRegistered(userId))

@@ -12,16 +12,16 @@ public class HrButtonService : IButtonService
     public HrButtonService(FaqService faqService)
     {
         _handlers = new Dictionary<string, ButtonHandle>();
-        _handlers["hr_adduser_button"] = AddUser;
-        _handlers["hr_deluser_button"] = DelUser;
-        _handlers["hr_mood_button"]    = GetMood;
-        _handlers["hr_getask_button"]  = GetQuestion;
+        _handlers["hr_adduser_button"] = AddUserAsync;
+        _handlers["hr_deluser_button"] = DelUserAsync;
+        _handlers["hr_mood_button"]    = GetMoodAsync;
+        _handlers["hr_getask_button"]  = GetQuestionAsync;
 
-        _handlers["hr_editfaq_button"] = EditFaqMenu;
-        _handlers["hr_add_faq"]        = faqService.StartFaqProcess;
-        _handlers["hr_modify_faq"]     = faqService.GetAllFaqs;
-        _handlers["hr_delete_faq"]     = faqService.RequestDeleteFaq;
-        _handlers["hr_back_to_main"]   = BackFromFaqToMain;
+        _handlers["hr_editfaq_button"] = EditFaqMenuAsync;
+        _handlers["hr_add_faq"]        = faqService.StartFaqProcessAsync;
+        _handlers["hr_modify_faq"]     = faqService.GetAllFaqsAsync;
+        _handlers["hr_delete_faq"]     = faqService.RequestDeleteFaqAsync;
+        _handlers["hr_back_to_main"]   = BackFromFaqToMainAsync;
     }
 
     public bool IsButtonExist(string buttonName)
@@ -29,7 +29,7 @@ public class HrButtonService : IButtonService
         return _handlers.ContainsKey(buttonName);
     }
 
-    public async Task Invoke(string buttonName, ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    public async Task InvokeAsync(string buttonName, ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         if (!IsButtonExist(buttonName))
             return;
@@ -37,7 +37,7 @@ public class HrButtonService : IButtonService
         await _handlers[buttonName].Invoke(botClient, callbackQuery);
     }
 
-    private async Task AddUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task AddUserAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -52,7 +52,7 @@ public class HrButtonService : IButtonService
         );
     }
 
-    private async Task DelUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task DelUserAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -67,7 +67,7 @@ public class HrButtonService : IButtonService
         );
     }
 
-    private async Task GetMood(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -82,7 +82,7 @@ public class HrButtonService : IButtonService
         );
     }
 
-    private async Task GetQuestion(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task GetQuestionAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -97,7 +97,7 @@ public class HrButtonService : IButtonService
         );
     }
 
-    private async Task BackFromFaqToMain(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task BackFromFaqToMainAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -129,7 +129,7 @@ public class HrButtonService : IButtonService
         );
     }
     
-    private async Task EditFaqMenu(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task EditFaqMenuAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)

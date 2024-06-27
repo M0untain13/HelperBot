@@ -30,7 +30,7 @@ public class ResponseService
 		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State == SessionState.Open);
 	}
 
-	public void Reply(ITelegramBotClient botClient, Message message)
+	public async Task ReplyAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		if (user is null)
@@ -38,44 +38,59 @@ public class ResponseService
 
 		var id = user.Id;
 
-		var session = GetSession(id);
+		var session = await GetSessionAsync(id);
 
 		if (session is null)
 			return;
 
-		session.InvokeHandle(botClient, message);
+		await session.InvokeHandleAsync(botClient, message);
 	}
 
-	private Session? GetSession(long id)
+	private async Task<Session?> GetSessionAsync(long id)
 	{
-		if (!_sessions.ContainsKey(id))
-			return null;
+        if (!_sessions.ContainsKey(id))
+            return null;
 
-		// Я знаю, это ужасная конструкция.
-		// Но, как по мне, код читаем, а значит все норм!
-		while (true)
+		Session? session = null;
+
+        await Task.Run(() =>
 		{
-			if (_sessions[id].Count == 0)
-				return null;
+			var isStart = true;
+            while (isStart)
+            {
+                if (_sessions[id].Count == 0)
+				{
+					session = null;
+					isStart = false;
+                }
+				else
+				{
+                    session = _sessions[id][0];
+                    switch (session.State)
+                    {
+                        case SessionState.Open:
+							isStart = false;
+							break;
+                        case SessionState.Wait:
+                            session = null;
+                            isStart = false;
+							break;
+                        case SessionState.Close:
+                            _sessions[id].Remove(session);
+                            session = null;
+                            break;
+                    }
+                }
+            }
+        });
 
-			var session = _sessions[id][0];
-			switch (session.State)
-			{
-				case SessionState.Open:
-					return session;
-				case SessionState.Wait:
-					return null;
-				case SessionState.Close:
-					_sessions[id].Remove(session);
-					break;
-			}
-		}
+		return session;
 	}
 
 	
-	public SessionProxy? GetSessionProxy(long id)
+	public async Task<SessionProxy?> GetSessionProxyAsync(long id)
 	{
-		var session = GetSession(id);
+		var session = await GetSessionAsync(id);
 
 		if (session is null)
 			return null;

@@ -15,6 +15,6 @@ public class SessionProxy
     }
 
     public bool Add(Task task, MessageHandle handle) => _session.Add(task, handle);
-    public void Start() => _session.Start();
+    public async Task StartAsync() => await _session.StartAsync();
     public void Close() => _session.Close();
 }

@@ -7,8 +7,8 @@ namespace ConsoleProject.Types.Classes;
 
 public class Session
 {
-    private List<Task> _tasks;
-    private List<MessageHandle> _handles;
+    private readonly List<Task> _tasks;
+    private readonly List<MessageHandle> _handles;
     private SessionState _state;
     public SessionState State => _state;
 
@@ -31,29 +31,29 @@ public class Session
         return false;
     }
 
-    private bool InvokeTask()
+    private async Task<bool> InvokeTaskAsync()
     {
         if (_tasks.Count == 0 && _state == SessionState.Open)
             return false;
 
         var task = _tasks[0];
         _tasks.Remove(task);
-        task.RunSynchronously();
+        task.RunSynchronously(); // TODO: переделать
 
         return true;
     }
 
-    public bool InvokeHandle(ITelegramBotClient botClient, Message message)
+    public async Task<bool> InvokeHandleAsync(ITelegramBotClient botClient, Message message)
     {
         if (_handles.Count == 0 && _state == SessionState.Open)
             return false;
 
         var handle = _handles[0];
         _handles.Remove(handle);
-        handle(botClient, message);
+        await handle(botClient, message);
 
         if (_tasks.Count > 0)
-            InvokeTask();
+            await InvokeTaskAsync();
 
         if (_handles.Count == 0)
             Wait();
@@ -61,12 +61,12 @@ public class Session
         return true;
     }
 
-    public void Start()
+    public async Task StartAsync()
     {
         if (_state != SessionState.Close)
         {
             _state = SessionState.Open;
-            InvokeTask();
+            await InvokeTaskAsync();
         }
     }
 
