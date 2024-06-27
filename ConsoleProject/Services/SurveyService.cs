@@ -36,11 +36,10 @@ public class SurveyService
 						"Оцените ваше настроение сегодня от 1 до 5."
 					);
 				});
-				// TODO: надо ли использовать await, если по-сути нам нужно не ждать, а сразу переходить к следующему юзеру?
-				_responseService.AddActionForWaitAsync(id, task, SetMood);
-				// TODO: нужно ли вставить сюда Thread.Sleep(), чтобы гарантировать, что действие добавится перед тем, как запустится, а не наоборот?
-				_responseService.StartActionsAsync(id);
-			}
+                var session = _responseService.CreateSession(id);
+                session?.Add(task, SetMood);
+                session?.Start();
+            }
 
 			await Task.Delay(_pollingDelay);
 		}
@@ -84,8 +83,9 @@ public class SurveyService
 					"Введите значение от 1 до 5."
 				);
 			});
-			await _responseService.AddActionForWaitAsync(id, task, SetMood);
-			await _responseService.StartActionsAsync(id);
-		}
+            var session = _responseService.GetSessionProxy(id);
+            session?.Add(task, SetMood);
+            session?.Start();
+        }
 	}
 }

@@ -1,88 +1,87 @@
+﻿using ConsoleProject.Types.Classes;
+using ConsoleProject.Types.Enums;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using ConsoleProject.Types;
 
 namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	private readonly Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)> _waitingForResponse;
+	private Dictionary<long, List<Session>> _sessions;
 
 	public ResponseService()
 	{
-		_waitingForResponse = new Dictionary<long, (Mutex, Queue<Task>, Queue<MessageHandle>)>();
+		_sessions = new Dictionary<long, List<Session>>();
+	}
+
+	public SessionProxy CreateSession(long id)
+	{
+		if (!_sessions.ContainsKey(id))
+			_sessions[id] = new List<Session>();
+
+		var session = new Session();
+		_sessions[id].Add(session);
+
+		return new SessionProxy(session);
 	}
 
 	public bool IsResponseExpected(long id)
 	{
-		return _waitingForResponse.ContainsKey(id) && _waitingForResponse[id].Item3.Count > 0;
+		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State != SessionState.Close);
 	}
 
-	/// <summary>
-	/// Обработать ответ.
-	/// </summary>
-	/// <returns> true - обработано, иначе false </returns>
-	public async Task<bool> ReplyAsync(ITelegramBotClient botClient, Message message)
+	public void Reply(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		if (user is null)
-			return false;
+			return;
 
 		var id = user.Id;
 
-		if (IsResponseExpected(id))
+		var session = GetSession(id);
+
+		if (session is null)
+			return;
+
+		// TODO: возможно тут стоит сделать выход из цикла, если слишком долгое ожидание
+		while(session.State == SessionState.Wait)
+			Thread.Sleep(1000);
+
+		session.InvokeHandle(botClient, message);
+	}
+
+	private Session? GetSession(long id)
+	{
+		if (!_sessions.ContainsKey(id))
+			return null;
+
+		// Я знаю, это ужасная конструкция.
+		// Но, как по мне, код читаем, а значит все норм!
+		while (true)
 		{
-			await _waitingForResponse[id].Item3.Dequeue().Invoke(botClient, message);
-			if(_waitingForResponse[id].Item2.TryDequeue(out var action))
+			if (_sessions[id].Count == 0)
+				return null;
+
+			var session = _sessions[id][0];
+			switch (session.State)
 			{
-				action.RunSynchronously();
+				case SessionState.Close:
+					_sessions[id].Remove(session);
+					break;
+				default:
+					return session;
 			}
-			else
-			{
-				_waitingForResponse[id].Item1.ReleaseMutex();
-			}
-			return true;
 		}
-
-		return false;
 	}
 
-	/// <summary>
-	/// Добавить действие в очередь.
-	/// После этого метода нужно вызвать StartActions.
-	/// </summary>
-	/// <param name="id"> Telegram ID. </param>
-	/// <param name="action"> Действие перед ожиданием ответа. </param>
-	/// <param name="handle"> Обработчик ответа. </param>
-	public async Task AddActionForWaitAsync(long id, Task action, MessageHandle handle)
+	
+	public SessionProxy? GetSessionProxy(long id)
 	{
-		await Task.Run(() =>
-		{
-			if (!IsResponseExpected(id))
-			{
-				_waitingForResponse[id] = (new Mutex(), new Queue<Task>(), new Queue<MessageHandle>());
-			}
+		var session = GetSession(id);
 
-			_waitingForResponse[id].Item1.WaitOne();
-			_waitingForResponse[id].Item2.Enqueue(action);
-			_waitingForResponse[id].Item3.Enqueue(handle);
-			_waitingForResponse[id].Item1.ReleaseMutex();
-		});
-	}
+		if (session is null)
+			return null;
 
-	/// <summary>
-	/// Начать цепочку действий.
-	/// Использовать только после AddActionForWait.
-	/// </summary>
-	/// <param name="id"> Telegram ID. </param>
-	/// <returns> true - цепочка запущена, иначе false </returns>
-	public async Task<bool> StartActionsAsync(long id)
-	{
-		if (!IsResponseExpected(id))
-			return false;
-
-		_waitingForResponse[id].Item1.WaitOne();
-		_waitingForResponse[id].Item2.Dequeue().RunSynchronously();
-		return true;
+		return new SessionProxy(session);
 	}
 }

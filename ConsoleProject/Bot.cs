@@ -37,7 +37,7 @@ public class Bot
 		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
 		var me = await botClient.GetMeAsync();
 		Console.WriteLine($"{me.FirstName} запущен!");
-		await _surveyService.StartAsync(botClient);
+		//await _surveyService.StartAsync(botClient);
 		await Task.Delay(-1);
 	}
 	

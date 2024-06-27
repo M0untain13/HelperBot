@@ -1,5 +1,5 @@
 using ConsoleProject.Models;
-using ConsoleProject.Types;
+using ConsoleProject.Types.Classes;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -41,21 +41,23 @@ public class AuthService
             return;
         
         _registrationData[id] = new UserData();
-        
+
+        var session = _responseService.CreateSession(id);
+
         Task task;
         task = new Task(async () =>
         {
             Console.WriteLine("1");
             await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
         });
-        await _responseService.AddActionForWaitAsync(id, task, SetName);
+        session.Add(task, SetName);
         task = new Task(async () =>
         {
             Console.WriteLine("2");
             await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
         });
-        await _responseService.AddActionForWaitAsync(id, task, SetSurname);
-        await _responseService.StartActionsAsync(id);
+        session.Add(task, SetSurname);
+        session.Start();
     }
 
     private async Task SetName(ITelegramBotClient botClient, Message message)
@@ -88,6 +90,7 @@ public class AuthService
         
         _registrationData[id].Clear();
         _registrationData.Remove(id);
+        _responseService.GetSessionProxy(id)?.Close();
     }
 
     private void RegisterUser(long userId, string name, string surname, string username)
