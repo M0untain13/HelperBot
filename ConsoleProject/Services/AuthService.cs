@@ -47,13 +47,11 @@ public class AuthService
         Task task;
         task = new Task(async () =>
         {
-            Console.WriteLine("1");
             await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
         });
         session.Add(task, SetName);
         task = new Task(async () =>
         {
-            Console.WriteLine("2");
             await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
         });
         session.Add(task, SetSurname);

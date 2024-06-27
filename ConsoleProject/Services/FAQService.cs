@@ -1,6 +1,7 @@
 using System.Text;
 using ConsoleProject.Models;
 using ConsoleProject.Types.Classes;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -12,10 +13,16 @@ public class FaqService
 	private readonly ResponseService _responseService;
 	private readonly Dictionary<long, FaqData> _faqData;
 	private readonly Dictionary<long, Dictionary<int, int>> _faqSelections = new();
+	private readonly ILogger _logger;
 	
-	public FaqService(ApplicationContext context, ResponseService responseService)
+	public FaqService(
+		ApplicationContext context, 
+		ResponseService responseService,
+		ILogger logger
+		)
 	{
-		_context = context;
+		_logger = logger;
+        _context = context;
 		_responseService = responseService;
 		_faqData = new Dictionary<long, FaqData>();
 	}
@@ -201,7 +208,7 @@ public class FaqService
             catch (Exception e)
             {
                 transaction.Rollback();
-                Console.WriteLine($"Ошибка при обновлении FAQ {e.Message}");
+				_logger.LogInformation($"Ошибка при обновлении FAQ {e.Message}");
                 await botClient.SendTextMessageAsync(chatId, "Произошла ошибка при обновлении FAQ");
             }
         }
