@@ -20,6 +20,7 @@ public class ApplicationContext : DbContext
 		ChangeTracker.Clear();
 	}
 	
+	// TODO: а это точно нужно?
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
 		if (!optionsBuilder.IsConfigured)

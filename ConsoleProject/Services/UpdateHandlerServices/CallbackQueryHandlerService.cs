@@ -1,4 +1,5 @@
 using ConsoleProject.Services.ButtonServices;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -9,9 +10,16 @@ public class CallbackQueryHandlerService
     private readonly UserButtonService _userButtonService;
     private readonly HrButtonService _hrButtonService;
     private readonly UserService _userService;
+    private readonly ILogger _logger;
 
-    public CallbackQueryHandlerService(UserService userService, UserButtonService userButtonService, HrButtonService hrButtonService)
+    public CallbackQueryHandlerService
+        (UserService userService, 
+        UserButtonService userButtonService, 
+        HrButtonService hrButtonService,
+        ILogger logger
+        )
     {
+        _logger = logger;
         _userButtonService = userButtonService;
         _hrButtonService = hrButtonService;
         _userService = userService;
@@ -30,8 +38,7 @@ public class CallbackQueryHandlerService
 
         var id = chat.Id;
 
-
-        Console.WriteLine($"({id}) нажал на кнопку \"{button}\"");
+        _logger.LogInformation($"({id}) нажал на кнопку \"{button}\"");
 
         var role = _userService.GetUserRole(id) ?? "";
 

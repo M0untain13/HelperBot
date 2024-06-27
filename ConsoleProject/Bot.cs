@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using ConsoleProject.Services.UpdateHandlerServices;
 using ConsoleProject.Services;
+using Microsoft.Extensions.Logging;
 
 namespace ConsoleProject;
 
@@ -13,13 +14,19 @@ public class Bot
 	private readonly MessageHandlerService _messageHandlerService;
 	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
 	private readonly SurveyService _surveyService;
+	private readonly ILogger _logger;
 
-	public Bot(MessageHandlerService messageHandlerService, CallbackQueryHandlerService callbackQueryHandlerService, SurveyService interviewer)
+	public Bot(
+		MessageHandlerService messageHandlerService, 
+		CallbackQueryHandlerService callbackQueryHandlerService, 
+		SurveyService interviewer,
+		ILogger logger
+		)
 	{
 		_messageHandlerService = messageHandlerService;
 		_callbackQueryHandlerService = callbackQueryHandlerService;
         _surveyService = interviewer;
-
+		_logger = logger;
     }
 
 	public async Task StartAsync(string token)
@@ -36,8 +43,8 @@ public class Bot
 		
 		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
 		var me = await botClient.GetMeAsync();
-		Console.WriteLine($"{me.FirstName} запущен!");
-		//await _surveyService.StartAsync(botClient);
+		_logger.LogInformation($"{me.FirstName} запущен!");
+		await _surveyService.StartAsync(botClient);
 		await Task.Delay(-1);
 	}
 	
@@ -60,7 +67,7 @@ public class Bot
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine(ex.ToString());
+			_logger.LogError(ex.Message);
 		}
 	}
 
@@ -71,8 +78,7 @@ public class Bot
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
-
-		Console.WriteLine(errorMessage);
+		_logger.LogError(errorMessage);
 		return Task.CompletedTask;
 	}
 }
