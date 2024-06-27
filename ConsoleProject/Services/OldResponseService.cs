@@ -1,6 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using ConsoleProject.Types;
+using ConsoleProject.Types.Delegates;
 
 namespace ConsoleProject.Services;
 

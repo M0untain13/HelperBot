@@ -1,7 +1,7 @@
-﻿using ConsoleProject.Types;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
+using ConsoleProject.Types.Delegates;
 
 namespace ConsoleProject.Services.ButtonServices;
 
