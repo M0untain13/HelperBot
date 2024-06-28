@@ -1,4 +1,5 @@
 ﻿using ConsoleProject.Models;
+using Microsoft.Extensions.Logging;
 using System.Data;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -10,9 +11,14 @@ public class SurveyService
 	private readonly int _pollingDelay;
 	private readonly ResponseService _responseService;
 	private readonly ApplicationContext _context;
+	private readonly ILogger _logger;
 	private bool _isStarted;
 
-	public SurveyService(ResponseService responseService, ApplicationContext context, int pollingDelay)
+	public SurveyService(
+		ResponseService responseService, 
+		ApplicationContext context, 
+		ILogger logger,
+		int pollingDelay)
 	{
 		_pollingDelay = pollingDelay;
 		_responseService = responseService;
@@ -25,7 +31,14 @@ public class SurveyService
 
 		while (_isStarted)
 		{
-			var ids = _context.Employees.Select(e => e.TelegramId).ToList();
+			var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
+			if (userPosId is null)
+			{
+				_logger.LogError("Not found user position in database.");
+				return;
+			}
+
+			var ids = _context.Accesses.Where(acc => acc.PositionsId == userPosId).Select(acc => acc.TelegramId).ToList();
 
 			foreach (var id in ids)
 			{
