@@ -5,23 +5,25 @@ using ConsoleProject.Types.Enums;
 
 namespace ConsoleProject.Types.Classes;
 
-public class Session
+public class Session : IDisposable
 {
     private readonly List<Task> _tasks;
     private readonly List<MessageHandle> _handles;
-    private SessionState _state;
-    public SessionState State => _state;
+    
+    public SessionState State { get; private set; }
+    public DateTime CreationDate { get; }
 
     public Session()
     {
         _tasks = new List<Task>();
         _handles = new List<MessageHandle>();
-        _state = SessionState.Wait;
+        State = SessionState.Wait;
+        CreationDate = DateTime.Now;
     }
 
     public bool Add(Task task, MessageHandle handle)
     {
-        if (_state != SessionState.Close)
+        if (State != SessionState.Close)
         {
             _tasks.Add(task);
             _handles.Add(handle);
@@ -33,7 +35,7 @@ public class Session
 
     private async Task<bool> InvokeTaskAsync()
     {
-        if (_tasks.Count == 0 && _state == SessionState.Open)
+        if (_tasks.Count == 0 && State == SessionState.Open)
             return false;
 
         var task = _tasks[0];
@@ -45,7 +47,7 @@ public class Session
 
     public async Task<bool> InvokeHandleAsync(ITelegramBotClient botClient, Message message)
     {
-        if (_handles.Count == 0 && _state == SessionState.Open)
+        if (_handles.Count == 0 && State == SessionState.Open)
             return false;
 
         var handle = _handles[0];
@@ -63,21 +65,49 @@ public class Session
 
     public async Task StartAsync()
     {
-        if (_state != SessionState.Close)
+        if (State != SessionState.Close)
         {
-            _state = SessionState.Open;
+            State = SessionState.Open;
             await InvokeTaskAsync();
         }
     }
 
     public void Wait()
     {
-        if (_state != SessionState.Close)
-            _state = SessionState.Wait;
+        if (State != SessionState.Close)
+            State = SessionState.Wait;
     }
 
     public void Close()
     {
-        _state = SessionState.Close;
+        State = SessionState.Close;
+    }
+
+    //==================================================
+
+    private bool disposedValue;
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                foreach(var task in _tasks)
+                {
+                    task.Dispose();
+                }
+                _tasks.Clear();
+                _handles.Clear();
+            }
+
+            disposedValue = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
