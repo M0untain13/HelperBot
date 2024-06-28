@@ -9,9 +9,56 @@ public class ResponseService
 {
 	private Dictionary<long, List<Session>> _sessions;
 
-	public ResponseService()
+	public ResponseService(int sessionClearDelay)
 	{
 		_sessions = new Dictionary<long, List<Session>>();
+
+		// Механизм отчистки сессий
+		Task.Run(async () =>
+		{
+			while (true)
+			{
+				// Отчистку делаем с определенным периодом
+				await Task.Delay(sessionClearDelay);
+				await ClearSessionsAsync(sessionClearDelay);
+			}
+		});
+	}
+
+	private async Task ClearSessionsAsync(int sessionClearDelay)
+	{
+		await Task.Run(() =>
+		{
+			foreach (var id in _sessions.Keys)
+			{
+				var sessions = _sessions[id];
+
+				if (sessions is null)
+					continue;
+
+				foreach (var session in sessions)
+				{
+					// Закрываем те сессии, которые слишком долго открыты
+					if (DateTime.Now - session.CreationDate > TimeSpan.FromMicroseconds(sessionClearDelay))
+					{
+						session.Close();
+					}
+
+					// Закрытые сессии удаляем
+					if (session.State == SessionState.Close)
+					{
+						session.Dispose();
+						sessions.Remove(session);
+					}
+				}
+
+				// Если у пользователя сессий не осталось, тогда удаляем его из словаря
+				if (sessions.Count == 0)
+				{
+					_sessions.Remove(id);
+				}
+			}
+		});
 	}
 
 	public SessionProxy CreateSession(long id)
@@ -48,41 +95,42 @@ public class ResponseService
 
 	private async Task<Session?> GetSessionAsync(long id)
 	{
-        if (!_sessions.ContainsKey(id))
-            return null;
+		if (!_sessions.ContainsKey(id))
+			return null;
 
 		Session? session = null;
 
-        await Task.Run(() =>
+		await Task.Run(() =>
 		{
 			var isStart = true;
-            while (isStart)
-            {
-                if (_sessions[id].Count == 0)
+			while (isStart)
+			{
+				if (_sessions[id].Count == 0)
 				{
 					session = null;
 					isStart = false;
-                }
+				}
 				else
 				{
-                    session = _sessions[id][0];
-                    switch (session.State)
-                    {
-                        case SessionState.Open:
+					session = _sessions[id][0];
+					switch (session.State)
+					{
+						case SessionState.Open:
 							isStart = false;
 							break;
-                        case SessionState.Wait:
-                            session = null;
-                            isStart = false;
+						case SessionState.Wait:
+							session = null;
+							isStart = false;
 							break;
-                        case SessionState.Close:
-                            _sessions[id].Remove(session);
-                            session = null;
-                            break;
-                    }
-                }
-            }
-        });
+						case SessionState.Close:
+							_sessions[id].Remove(session);
+							session.Dispose();
+							session = null;
+							break;
+					}
+				}
+			}
+		});
 
 		return session;
 	}

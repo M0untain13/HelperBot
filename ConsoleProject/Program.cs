@@ -24,7 +24,7 @@ public class Program
 		// TODO: эти переменные в будущем должны получаться из массива args
 		var moodPollingDelay = 1000 * 60 * 60 * 24;
 		var databaseConnection = "Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234";
-
+		var sessionClearDelay = 1000 * 60 * 60 * 24;
 
         var loggerFactory = LoggerFactory.Create(
 			builder =>
@@ -47,7 +47,9 @@ public class Program
 					)
 					.AddSingleton<UserService>()
 					.AddSingleton<AuthService>()
-					.AddSingleton<ResponseService>()
+					.AddSingleton(
+						_ => new ResponseService(sessionClearDelay)
+					)
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
 					.AddSingleton<HrButtonService>()
