@@ -79,6 +79,8 @@ public class FaqService
 
         await SaveFaqAsync(chatId, _faqData[chatId].Question, _faqData[chatId].Answer);
         await botClient.SendTextMessageAsync(chatId, "Ваш вопрос и ответ успешно сохранены.");
+		var session = await _responseService.GetSessionProxyAsync(chatId);
+		session?.Close();
         _faqData[chatId].Clear();
         _faqData.Remove(chatId);
     }
@@ -205,11 +207,13 @@ public class FaqService
 
                 transaction.Commit();
                 await botClient.SendTextMessageAsync(chatId, "Старый FAQ удален, новый добавлен.");
+                var session = await _responseService.GetSessionProxyAsync(chatId);
+                session?.Close();
             }
             catch (Exception e)
             {
                 transaction.Rollback();
-				_logger.LogInformation($"Ошибка при обновлении FAQ {e.Message}");
+				_logger.LogError($"Ошибка при обновлении FAQ {e.Message}");
                 await botClient.SendTextMessageAsync(chatId, "Произошла ошибка при обновлении FAQ");
             }
         }
@@ -273,7 +277,9 @@ public class FaqService
 				_context.Faqs.Remove(faqToDelete);
 				await _context.SaveChangesAsync();
 				await botClient.SendTextMessageAsync(chatId, "FAQ был успешно удален");
-				_context.ClearContext();
+                var session = await _responseService.GetSessionProxyAsync(chatId);
+                session?.Close();
+                _context.ClearContext();
 				_faqSelections[chatId].Clear();
 			}
 			else
