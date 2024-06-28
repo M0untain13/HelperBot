@@ -1,4 +1,5 @@
 ﻿using ConsoleProject.Models;
+using Microsoft.Extensions.Logging;
 using System.Data;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -10,11 +11,16 @@ public class SurveyService
 	private readonly int _pollingDelay;
 	private readonly ResponseService _responseService;
 	private readonly ApplicationContext _context;
+	private readonly ILogger _logger;
 	private bool _isStarted;
 
-	public SurveyService(ResponseService responseService, ApplicationContext context)
+	public SurveyService(
+		ResponseService responseService, 
+		ApplicationContext context, 
+		ILogger logger,
+		int pollingDelay)
 	{
-		_pollingDelay = 1000*30; // TODO: пока что сделал опрос каждые 30 секунд, потом можно будет сделать проброс delay через аргумент конструктора и хост билдер
+		_pollingDelay = pollingDelay;
 		_responseService = responseService;
 		_context = context;
 	}
@@ -25,7 +31,14 @@ public class SurveyService
 
 		while (_isStarted)
 		{
-			var ids = _context.Employees.Select(e => e.TelegramId).ToList();
+			var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
+			if (userPosId is null)
+			{
+				_logger.LogError("Not found user position in database.");
+				return;
+			}
+
+			var ids = _context.Accesses.Where(acc => acc.PositionsId == userPosId).Select(acc => acc.TelegramId).ToList();
 
 			foreach (var id in ids)
 			{
@@ -37,8 +50,10 @@ public class SurveyService
 					);
 				});
                 var session = _responseService.CreateSession(id);
-                session?.Add(task, SetMood);
-                session?.Start();
+				if (session is null)
+					continue;
+                session.Add(task, SetMoodAsync);
+                await session.StartAsync();
             }
 
 			await Task.Delay(_pollingDelay);
@@ -51,7 +66,7 @@ public class SurveyService
 		_isStarted = false;
 	}
 
-	private async Task SetMood(ITelegramBotClient botClient, Message message)
+	private async Task SetMoodAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		var id = message.Chat.Id;
@@ -73,8 +88,8 @@ public class SurveyService
 				id,
 				"Спасибо за ответ!"
 			);
-            var session = _responseService.GetSessionProxy(id);
-			session?.Close();
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Close();
         }
 		else
 		{
@@ -85,9 +100,11 @@ public class SurveyService
 					"Введите значение от 1 до 5."
 				);
 			});
-            var session = _responseService.GetSessionProxy(id);
-            session?.Add(task, SetMood);
-            session?.Start();
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Add(task, SetMoodAsync);
+            if (session is null)
+                return;
+            await session.StartAsync();
         }
 	}
 }

@@ -59,6 +59,6 @@ public class CallbackQueryHandlerService
         if (!buttonService.IsButtonExist(button))
             throw new Exception($"Нет инструкций для кнопки \"{button}\" для роли \"{role}\".");
 
-        await buttonService.Invoke(button, botClient, callbackQuery);
+        await buttonService.InvokeAsync(button, botClient, callbackQuery);
     }
 }

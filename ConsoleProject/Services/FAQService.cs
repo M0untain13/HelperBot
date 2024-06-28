@@ -27,7 +27,7 @@ public class FaqService
 		_faqData = new Dictionary<long, FaqData>();
 	}
 
-	public async Task StartFaqProcess(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	public async Task StartFaqProcessAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
 		if (callbackQuery.Message is null)
 			return;
@@ -43,38 +43,31 @@ public class FaqService
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             await botClient.SendTextMessageAsync(chatId, "Пожалуйства введите текст вопроса:");
         });
-        session.Add(task, SetQuestion);
+        session.Add(task, SetQuestionAsync);
 
         task = new Task(async () =>
         {
             await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
         });
-        session.Add(task, SetAnswer);
-        session.Start();
+        session.Add(task, SetAnswerAsync);
+        await session.StartAsync();
     }
 
-	private async Task SetQuestion(ITelegramBotClient botClient, Message message)
+	private async Task SetQuestionAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		var chatId = message.Chat.Id;
 		var text = message.Text;
 		if (user is null || text is null)
 			return;
-		_faqData[chatId].Question = text;
 
-		var session = _responseService.GetSessionProxy(chatId);
-		if (session is null)
-			return;
-
-		Task task = new Task(async () =>
+		await Task.Run(() =>
 		{
-			await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
-		});
-		session.Add(task, SetAnswer);
-        session.Start();
+            _faqData[chatId].Question = text;
+        });
 	}
 	
-	private async Task SetAnswer(ITelegramBotClient botClient, Message message)
+	private async Task SetAnswerAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		var chatId = message.Chat.Id;
@@ -84,20 +77,22 @@ public class FaqService
 
 		_faqData[chatId].Answer = text;
 
-        await SaveFaq(chatId, _faqData[chatId].Question, _faqData[chatId].Answer);
+        await SaveFaqAsync(chatId, _faqData[chatId].Question, _faqData[chatId].Answer);
         await botClient.SendTextMessageAsync(chatId, "Ваш вопрос и ответ успешно сохранены.");
+		var session = await _responseService.GetSessionProxyAsync(chatId);
+		session?.Close();
         _faqData[chatId].Clear();
         _faqData.Remove(chatId);
     }
 
-	private async Task SaveFaq(long userId, string question, string answer)
+	private async Task SaveFaqAsync(long userId, string question, string answer)
 	{
 		var faq = new Faq(question, answer);
 		_context.Faqs.Add(faq);
 		await _context.SaveChangesAsync();
 	}
 
-	public async Task GetAllFaqs(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	public async Task GetAllFaqsAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
 		var chat = callbackQuery.Message?.Chat;
 		if (chat is null)
@@ -122,15 +117,17 @@ public class FaqService
 				index++;
 			}
 
-			var session = _responseService.GetSessionProxy(id);
+			var session = await _responseService.GetSessionProxyAsync(id);
+            if (session is null)
+                return;
 
-			var task = new Task(async () =>
+            var task = new Task(async () =>
 			{
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
 				await botClient.SendTextMessageAsync(id, sb.ToString());
 			});
-            session?.Add(task, HandleFaqSelectionForEditing);
-            session?.Start();
+            session.Add(task, HandleFaqSelectionForEditingAsync);
+            await session.StartAsync();
 		}
 		else
 		{
@@ -139,7 +136,7 @@ public class FaqService
 		}
 	}
 
-	private async Task HandleFaqSelectionForEditing(ITelegramBotClient botClient, Message message)
+	private async Task HandleFaqSelectionForEditingAsync(ITelegramBotClient botClient, Message message)
 	{
 		var chatId = message.Chat.Id;
 		if (int.TryParse(message.Text, out int index) && _faqSelections.ContainsKey(chatId) &&
@@ -154,9 +151,12 @@ public class FaqService
 					await botClient.SendTextMessageAsync(chatId,
 					$"Текущий вопрос: {faq.Question}\n Текущий ответ: {faq.Answer}\n Введите новый вопрос:");
 				});
-                var session = _responseService.GetSessionProxy(chatId);
-                session?.Add(task, (client, context) => HandleEditQuestion(client, context, faqId));
-                session?.Start();
+                var session = await _responseService.GetSessionProxyAsync(chatId);
+                if (session is null)
+                    return;
+
+                session.Add(task, (client, context) => HandleEditQuestionAsync(client, context, faqId));
+                await session.StartAsync();
 			}
 			else
 				await botClient.SendTextMessageAsync(chatId, "Выбранный FAQ не найден");
@@ -165,7 +165,7 @@ public class FaqService
 			await botClient.SendTextMessageAsync(chatId, "Введен некорректный номер.");
 	}
 
-	private async Task HandleEditQuestion(ITelegramBotClient botClient, Message message, int faqId)
+	private async Task HandleEditQuestionAsync(ITelegramBotClient botClient, Message message, int faqId)
 	{
 		var chatId = message.Chat.Id;
 		var newQuestion = message.Text;
@@ -173,12 +173,15 @@ public class FaqService
 		{
 			await botClient.SendTextMessageAsync(chatId, "Введите новый ответ:");
 		});
-        var session = _responseService.GetSessionProxy(chatId);
-        session?.Add(task, (client, context) => HandleEditAnswer(botClient, context, faqId, newQuestion));
-        session?.Start();
+        var session = await _responseService.GetSessionProxyAsync(chatId);
+        if (session is null)
+            return;
+
+        session.Add(task, (client, context) => HandleEditAnswerAsync(botClient, context, faqId, newQuestion));
+        await session.StartAsync();
 	}
 
-	private async Task HandleEditAnswer(ITelegramBotClient botClient, Message message, int oldFaqId, string newQuestion)
+	private async Task HandleEditAnswerAsync(ITelegramBotClient botClient, Message message, int oldFaqId, string newQuestion)
 	{
 		var chatId = message.Chat.Id;
 		var newAnswer = message.Text;
@@ -204,17 +207,19 @@ public class FaqService
 
                 transaction.Commit();
                 await botClient.SendTextMessageAsync(chatId, "Старый FAQ удален, новый добавлен.");
+                var session = await _responseService.GetSessionProxyAsync(chatId);
+                session?.Close();
             }
             catch (Exception e)
             {
                 transaction.Rollback();
-				_logger.LogInformation($"Ошибка при обновлении FAQ {e.Message}");
+				_logger.LogError($"Ошибка при обновлении FAQ {e.Message}");
                 await botClient.SendTextMessageAsync(chatId, "Произошла ошибка при обновлении FAQ");
             }
         }
     }
 
-	public async Task RequestDeleteFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	public async Task RequestDeleteFaqAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
 		var chat = callbackQuery.Message?.Chat;
 		if (chat is null)
@@ -244,9 +249,12 @@ public class FaqService
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
 				await botClient.SendTextMessageAsync(id, sb.ToString());
 			});
-            var session = _responseService.GetSessionProxy(id);
-            session?.Add(task, HandleFaqDeleteSelection);
-            session?.Start();
+            var session = await _responseService.GetSessionProxyAsync(id);
+            if (session is null)
+                return;
+
+            session.Add(task, HandleFaqDeleteSelectionAsync);
+            await session.StartAsync();
 		}
 		else
 		{
@@ -255,7 +263,7 @@ public class FaqService
 		}
 	}
 
-	private async Task HandleFaqDeleteSelection(ITelegramBotClient botClient, Message message)
+	private async Task HandleFaqDeleteSelectionAsync(ITelegramBotClient botClient, Message message)
 	{
 		var chatId = message.Chat.Id;
 		if (int.TryParse(message.Text, out int index) && _faqSelections.ContainsKey(chatId) &&
@@ -269,7 +277,9 @@ public class FaqService
 				_context.Faqs.Remove(faqToDelete);
 				await _context.SaveChangesAsync();
 				await botClient.SendTextMessageAsync(chatId, "FAQ был успешно удален");
-				_context.ClearContext();
+                var session = await _responseService.GetSessionProxyAsync(chatId);
+                session?.Close();
+                _context.ClearContext();
 				_faqSelections[chatId].Clear();
 			}
 			else

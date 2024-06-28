@@ -11,9 +11,9 @@ public class UserButtonService : IButtonService
     public UserButtonService()
     {
         _handlers = new Dictionary<string, ButtonHandle>();
-        _handlers["user_faq_button"]  = GetFaq;
-        _handlers["user_ask_button"]  = Ask;
-        _handlers["user_mood_button"] = GetMood;
+        _handlers["user_faq_button"]  = GetFaqAsync;
+        _handlers["user_ask_button"]  = AskAsync;
+        _handlers["user_mood_button"] = GetMoodAsync;
     }
 
     public bool IsButtonExist(string buttonName)
@@ -21,7 +21,7 @@ public class UserButtonService : IButtonService
         return _handlers.ContainsKey(buttonName);
     }
 
-    public async Task Invoke(string buttonName, ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    public async Task InvokeAsync(string buttonName, ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         if (!IsButtonExist(buttonName))
             return;
@@ -29,7 +29,7 @@ public class UserButtonService : IButtonService
         await _handlers[buttonName].Invoke(botClient, callbackQuery);
     }
 
-    private async Task GetFaq(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task GetFaqAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -44,7 +44,7 @@ public class UserButtonService : IButtonService
         );
     }
 
-    private async Task Ask(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task AskAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)
@@ -59,7 +59,7 @@ public class UserButtonService : IButtonService
         );
     }
 
-    private async Task GetMood(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         var chat = callbackQuery.Message?.Chat;
         if (chat is null)

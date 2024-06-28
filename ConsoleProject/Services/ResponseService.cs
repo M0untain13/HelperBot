@@ -1,5 +1,6 @@
 ﻿using ConsoleProject.Types.Classes;
 using ConsoleProject.Types.Enums;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -7,11 +8,60 @@ namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	private Dictionary<long, List<Session>> _sessions;
+	private readonly Dictionary<long, List<Session>> _sessions;
+	private readonly ILogger _logger;
 
-	public ResponseService()
+	public ResponseService(ILogger logger, int sessionClearDelay)
 	{
 		_sessions = new Dictionary<long, List<Session>>();
+		_logger = logger;
+
+        // Механизм отчистки сессий
+        Task.Run(async () =>
+		{
+			while (true)
+			{
+				// Отчистку делаем с определенным периодом
+				await Task.Delay(sessionClearDelay);
+				await ClearSessionsAsync(sessionClearDelay);
+			}
+		});
+	}
+
+	private async Task ClearSessionsAsync(int sessionClearDelay)
+	{
+		await Task.Run(() =>
+		{
+			foreach (var id in _sessions.Keys)
+			{
+				var sessions = _sessions[id];
+
+				if (sessions is null)
+					continue;
+
+				foreach (var session in sessions)
+				{
+					// Закрываем те сессии, которые слишком долго открыты
+					if (DateTime.Now - session.CreationDate > TimeSpan.FromMicroseconds(sessionClearDelay))
+					{
+						session.Close();
+					}
+
+					// Закрытые сессии удаляем
+					if (session.State == SessionState.Close)
+					{
+						session.Dispose();
+						sessions.Remove(session);
+					}
+				}
+
+				// Если у пользователя сессий не осталось, тогда удаляем его из словаря
+				if (sessions.Count == 0)
+				{
+					_sessions.Remove(id);
+				}
+			}
+		});
 	}
 
 	public SessionProxy CreateSession(long id)
@@ -19,7 +69,7 @@ public class ResponseService
 		if (!_sessions.ContainsKey(id))
 			_sessions[id] = new List<Session>();
 
-		var session = new Session();
+		var session = new Session(_logger);
 		_sessions[id].Add(session);
 
 		return new SessionProxy(session);
@@ -30,7 +80,7 @@ public class ResponseService
 		return _sessions.ContainsKey(id) && _sessions[id].Count > 0 && _sessions[id].Any(s => s.State == SessionState.Open);
 	}
 
-	public void Reply(ITelegramBotClient botClient, Message message)
+	public async Task ReplyAsync(ITelegramBotClient botClient, Message message)
 	{
 		var user = message.From;
 		if (user is null)
@@ -38,44 +88,79 @@ public class ResponseService
 
 		var id = user.Id;
 
-		var session = GetSession(id);
+		var session = await GetSessionAsync(id);
 
 		if (session is null)
 			return;
 
-		session.InvokeHandle(botClient, message);
+		await session.InvokeHandleAsync(botClient, message);
 	}
 
-	private Session? GetSession(long id)
+	private async Task<Session?> GetSessionAsync(long id)
 	{
 		if (!_sessions.ContainsKey(id))
 			return null;
 
-		// Я знаю, это ужасная конструкция.
-		// Но, как по мне, код читаем, а значит все норм!
-		while (true)
-		{
-			if (_sessions[id].Count == 0)
-				return null;
+		Session? session = null;
 
-			var session = _sessions[id][0];
-			switch (session.State)
+		await Task.Run(() =>
+		{
+			var isStart = true;
+			while (isStart)
 			{
-				case SessionState.Open:
-					return session;
-				case SessionState.Wait:
-					return null;
-				case SessionState.Close:
-					_sessions[id].Remove(session);
-					break;
+				if (_sessions[id].Count == 0)
+				{
+					session = null;
+					isStart = false;
+				}
+				else
+				{
+					session = _sessions[id][0];
+					switch (session.State)
+					{
+						case SessionState.Open:
+							isStart = false;
+							break;
+						case SessionState.Wait:
+							session = null;
+							isStart = false;
+							break;
+						case SessionState.Close:
+							_sessions[id].Remove(session);
+							session.Dispose();
+							session = null;
+							break;
+					}
+				}
 			}
-		}
+		});
+
+		return session;
 	}
 
-	
-	public SessionProxy? GetSessionProxy(long id)
+	public async Task ClearSessions(long id)
 	{
-		var session = GetSession(id);
+		await Task.Run(() =>
+		{
+            if (!_sessions.ContainsKey(id))
+                return;
+
+            var sessions = _sessions[id];
+            _sessions.Remove(id);
+
+            foreach (var session in sessions)
+            {
+                session.Close();
+                session.Dispose();
+            }
+
+            sessions.Clear();
+        });
+    }
+
+	public async Task<SessionProxy?> GetSessionProxyAsync(long id)
+	{
+		var session = await GetSessionAsync(id);
 
 		if (session is null)
 			return null;
