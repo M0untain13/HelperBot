@@ -116,27 +116,20 @@ public class Session : IDisposable
 
 	private bool disposedValue;
 
-	protected virtual void Dispose(bool disposing)
+	protected virtual void Dispose(bool _)
 	{
 		if (!disposedValue)
 		{
-			if (disposing)
-			{
-				foreach(var task in _tasks)
-				{
-					task.Dispose();
-				}
-				_tasks.Clear();
-				_handles.Clear();
-			}
+            _tasks.Clear();
+            _handles.Clear();
 
-			disposedValue = true;
+            disposedValue = true;
 		}
 	}
 
 	public void Dispose()
 	{
-		Dispose(disposing: true);
+		Dispose(true);
 		GC.SuppressFinalize(this);
 	}
 }
