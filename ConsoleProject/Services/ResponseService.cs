@@ -138,7 +138,26 @@ public class ResponseService
 		return session;
 	}
 
-	
+	public async Task ClearSessions(long id)
+	{
+		await Task.Run(() =>
+		{
+            if (!_sessions.ContainsKey(id))
+                return;
+
+            var sessions = _sessions[id];
+            _sessions.Remove(id);
+
+            foreach (var session in sessions)
+            {
+                session.Close();
+                session.Dispose();
+            }
+
+            sessions.Clear();
+        });
+    }
+
 	public async Task<SessionProxy?> GetSessionProxyAsync(long id)
 	{
 		var session = await GetSessionAsync(id);
