@@ -2,6 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using ConsoleProject.Types.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace ConsoleProject.Types.Classes;
 
@@ -9,16 +10,18 @@ public class Session : IDisposable
 {
 	private readonly List<Task> _tasks;
 	private readonly List<MessageHandle> _handles;
-	
+	private readonly ILogger _logger;
+
 	public SessionState State { get; private set; }
 	public DateTime CreationDate { get; }
 
-	public Session()
+	public Session(ILogger logger)
 	{
 		_tasks = new List<Task>();
 		_handles = new List<MessageHandle>();
 		State = SessionState.Wait;
 		CreationDate = DateTime.Now;
+		_logger = logger;
 	}
 
 	public bool Add(Task task, MessageHandle handle)
@@ -41,11 +44,20 @@ public class Session : IDisposable
 		var task = _tasks[0];
 		_tasks.Remove(task);
 
-        // К сожалению, иначе никак это не запустить асинхронно
-        await Task.Run(() =>
+		try
 		{
-			task.RunSynchronously();
-		});
+            // К сожалению, иначе никак это не запустить асинхронно
+            await Task.Run(() =>
+            {
+                task.RunSynchronously();
+            });
+        }
+		catch (Exception ex)
+		{
+            Close();
+            _logger.LogError(ex.Message);
+            return false;
+        }
 
 		return true;
 	}
@@ -57,12 +69,24 @@ public class Session : IDisposable
 
 		var handle = _handles[0];
 		_handles.Remove(handle);
-		await handle(botClient, message);
 
-		if (_tasks.Count > 0)
-			await InvokeTaskAsync();
+        try
+        {
+            await handle(botClient, message);
+        }
+        catch (Exception ex)
+        {
+            Close();
+            _logger.LogError(ex.Message);
+            return false;
+        }
 
-		if (_handles.Count == 0)
+        if (_tasks.Count > 0)
+		{
+            await InvokeTaskAsync();
+        }
+
+        if (_handles.Count == 0)
 			Wait();
 
 		return true;

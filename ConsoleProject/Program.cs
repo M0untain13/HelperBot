@@ -48,7 +48,11 @@ public class Program
 					.AddSingleton<UserService>()
 					.AddSingleton<AuthService>()
 					.AddSingleton(
-						_ => new ResponseService(sessionClearDelay)
+                        provider =>
+						{
+							var logger = provider.GetRequiredService<ILogger>();
+							return new ResponseService(logger, sessionClearDelay);
+                        }
 					)
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
@@ -60,7 +64,8 @@ public class Program
 						{
 							var responseService = provider.GetRequiredService<ResponseService>();
 							var context = provider.GetRequiredService<ApplicationContext>();
-							return new SurveyService(responseService, context, moodPollingDelay);
+							var logger = provider.GetRequiredService<ILogger>();
+                            return new SurveyService(responseService, context, logger, moodPollingDelay);
 						}
 					)
 					.AddSingleton<Bot>()

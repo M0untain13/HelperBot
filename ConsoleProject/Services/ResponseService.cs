@@ -1,5 +1,6 @@
 ﻿using ConsoleProject.Types.Classes;
 using ConsoleProject.Types.Enums;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -7,14 +8,16 @@ namespace ConsoleProject.Services;
 
 public class ResponseService
 {
-	private Dictionary<long, List<Session>> _sessions;
+	private readonly Dictionary<long, List<Session>> _sessions;
+	private readonly ILogger _logger;
 
-	public ResponseService(int sessionClearDelay)
+	public ResponseService(ILogger logger, int sessionClearDelay)
 	{
 		_sessions = new Dictionary<long, List<Session>>();
+		_logger = logger;
 
-		// Механизм отчистки сессий
-		Task.Run(async () =>
+        // Механизм отчистки сессий
+        Task.Run(async () =>
 		{
 			while (true)
 			{
@@ -66,7 +69,7 @@ public class ResponseService
 		if (!_sessions.ContainsKey(id))
 			_sessions[id] = new List<Session>();
 
-		var session = new Session();
+		var session = new Session(_logger);
 		_sessions[id].Add(session);
 
 		return new SessionProxy(session);

@@ -60,18 +60,11 @@ public class FaqService
 		var text = message.Text;
 		if (user is null || text is null)
 			return;
-		_faqData[chatId].Question = text;
 
-		var session = await _responseService.GetSessionProxyAsync(chatId);
-		if (session is null)
-			return;
-
-		Task task = new Task(async () =>
+		await Task.Run(() =>
 		{
-			await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
-		});
-		session.Add(task, SetAnswerAsync);
-        await session.StartAsync();
+            _faqData[chatId].Question = text;
+        });
 	}
 	
 	private async Task SetAnswerAsync(ITelegramBotClient botClient, Message message)
