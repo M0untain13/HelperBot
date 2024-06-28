@@ -71,7 +71,8 @@ public class Program
 					.AddSingleton<Bot>()
 					.AddSingleton<ILogger>(
 						_ => loggerFactory.CreateLogger<Program>()
-                    );
+                    )
+					.AddSingleton<KeyboardService>();
 			}
 		);
 	}
