@@ -7,107 +7,112 @@ namespace ConsoleProject.Types.Classes;
 
 public class Session : IDisposable
 {
-    private readonly List<Task> _tasks;
-    private readonly List<MessageHandle> _handles;
-    
-    public SessionState State { get; private set; }
-    public DateTime CreationDate { get; }
+	private readonly List<Task> _tasks;
+	private readonly List<MessageHandle> _handles;
+	
+	public SessionState State { get; private set; }
+	public DateTime CreationDate { get; }
 
-    public Session()
-    {
-        _tasks = new List<Task>();
-        _handles = new List<MessageHandle>();
-        State = SessionState.Wait;
-        CreationDate = DateTime.Now;
-    }
+	public Session()
+	{
+		_tasks = new List<Task>();
+		_handles = new List<MessageHandle>();
+		State = SessionState.Wait;
+		CreationDate = DateTime.Now;
+	}
 
-    public bool Add(Task task, MessageHandle handle)
-    {
-        if (State != SessionState.Close)
-        {
-            _tasks.Add(task);
-            _handles.Add(handle);
-            return true;
-        }
+	public bool Add(Task task, MessageHandle handle)
+	{
+		if (State != SessionState.Close)
+		{
+			_tasks.Add(task);
+			_handles.Add(handle);
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    private async Task<bool> InvokeTaskAsync()
-    {
-        if (_tasks.Count == 0 && State == SessionState.Open)
-            return false;
+	private async Task<bool> InvokeTaskAsync()
+	{
+		if (_tasks.Count == 0 && State == SessionState.Open)
+			return false;
 
-        var task = _tasks[0];
-        _tasks.Remove(task);
-        task.RunSynchronously(); // TODO: переделать
+		var task = _tasks[0];
+		_tasks.Remove(task);
 
-        return true;
-    }
+        // К сожалению, иначе никак это не запустить асинхронно
+        await Task.Run(() =>
+		{
+			task.RunSynchronously();
+		});
 
-    public async Task<bool> InvokeHandleAsync(ITelegramBotClient botClient, Message message)
-    {
-        if (_handles.Count == 0 && State == SessionState.Open)
-            return false;
+		return true;
+	}
 
-        var handle = _handles[0];
-        _handles.Remove(handle);
-        await handle(botClient, message);
+	public async Task<bool> InvokeHandleAsync(ITelegramBotClient botClient, Message message)
+	{
+		if (_handles.Count == 0 && State == SessionState.Open)
+			return false;
 
-        if (_tasks.Count > 0)
-            await InvokeTaskAsync();
+		var handle = _handles[0];
+		_handles.Remove(handle);
+		await handle(botClient, message);
 
-        if (_handles.Count == 0)
-            Wait();
+		if (_tasks.Count > 0)
+			await InvokeTaskAsync();
 
-        return true;
-    }
+		if (_handles.Count == 0)
+			Wait();
 
-    public async Task StartAsync()
-    {
-        if (State != SessionState.Close)
-        {
-            State = SessionState.Open;
-            await InvokeTaskAsync();
-        }
-    }
+		return true;
+	}
 
-    public void Wait()
-    {
-        if (State != SessionState.Close)
-            State = SessionState.Wait;
-    }
+	public async Task StartAsync()
+	{
+		if (State != SessionState.Close)
+		{
+			State = SessionState.Open;
+			await InvokeTaskAsync();
+		}
+	}
 
-    public void Close()
-    {
-        State = SessionState.Close;
-    }
+	public void Wait()
+	{
+		if (State != SessionState.Close)
+			State = SessionState.Wait;
+	}
 
-    //==================================================
+	public void Close()
+	{
+		State = SessionState.Close;
+	}
 
-    private bool disposedValue;
+	//==================================================
 
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!disposedValue)
-        {
-            if (disposing)
-            {
-                foreach(var task in _tasks)
-                {
-                    task.Dispose();
-                }
-                _tasks.Clear();
-                _handles.Clear();
-            }
+	private bool disposedValue;
 
-            disposedValue = true;
-        }
-    }
+	protected virtual void Dispose(bool disposing)
+	{
+		if (!disposedValue)
+		{
+			if (disposing)
+			{
+				foreach(var task in _tasks)
+				{
+					task.Dispose();
+				}
+				_tasks.Clear();
+				_handles.Clear();
+			}
 
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
+			disposedValue = true;
+		}
+	}
+
+	public void Dispose()
+	{
+		Dispose(disposing: true);
+		GC.SuppressFinalize(this);
+	}
 }

@@ -17,7 +17,7 @@ public class Program
 		var host = CreateHostBuilder(args).Build();
 		var bot = host.Services.GetRequiredService<Bot>();
 		bot.StartAsync("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak").Wait();
-	}
+    }
 
 	private static IHostBuilder CreateHostBuilder(string[] args)
 	{
@@ -64,7 +64,7 @@ public class Program
 						}
 					)
 					.AddSingleton<Bot>()
-					.AddSingleton(
+					.AddSingleton<ILogger>(
 						_ => loggerFactory.CreateLogger<Program>()
                     );
 			}
