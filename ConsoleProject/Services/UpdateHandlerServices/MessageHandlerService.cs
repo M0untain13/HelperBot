@@ -94,10 +94,9 @@ public class MessageHandlerService
         // Надо ли регать юзера?
         else if (!_authService.IsUserRegistered(userId))
         {
-            await botClient.SendTextMessageAsync(chatId,
-                "Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться. " +
-                "Следуйте пожалуйста следующим инструкциям для завершения регистрации:");
-            await _authService.RegisterAsync(botClient, update);
+            /*await botClient.SendTextMessageAsync(chatId,
+                "Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться. ");*/
+            await _authService.ProcessWaitRegistration(botClient, update);
         }
         // Иначе просто выдаем меню
         else

@@ -23,9 +23,33 @@ public class AuthService
         return _context.Employees.Any(e => e.TelegramId == id);
     }
 
-    public async Task RegisterAsync(ITelegramBotClient botClient, Update update)
+
+    public async Task ProcessWaitRegistration(ITelegramBotClient botClient, Update update)
     {
-        var message = update.Message;
+        long tg_id = update.Message.From.Id;
+        string login = "@" + update.Message.From.Username;
+        if (!IsUserRegistered(tg_id))
+        {
+            var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
+            if (registration != null)
+            {
+                RegisterUser(tg_id, registration.Name, registration.Surname, login);
+
+                _context.WaitRegistrations.Remove(registration);
+                _context.SaveChanges();
+
+                await botClient.SendTextMessageAsync(tg_id, "Ваш уккаунт успешно зарегистрирован!");
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(tg_id, "Вы не находитесь в списке ожидания регистрации.");
+            }
+        }
+    }
+
+    public async Task RegisterUserByHR(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    {
+        var message = callbackQuery.Message;
         if (message is null)
             return;
 
@@ -35,10 +59,8 @@ public class AuthService
         if (user is null || text is null)
             return;
 
-        var id = user.Id;
-
-        if (IsUserRegistered(id))
-            return;
+        var id = chat.Id;
+        
         
         _registrationData[id] = new UserData();
 
@@ -47,14 +69,19 @@ public class AuthService
         Task task;
         task = new Task(async () =>
         {
-            await botClient.SendTextMessageAsync(id, "Пожалуйста, введите ваше имя.");
+            await botClient.SendTextMessageAsync(id, "Пожалуйста, введите имя пользователя.");
         });
         session.Add(task, SetName);
         task = new Task(async () =>
         {
-            await botClient.SendTextMessageAsync(id, "Введите вашу фамилию.");
+            await botClient.SendTextMessageAsync(id, "Введите фамилию пользователя.");
         });
         session.Add(task, SetSurname);
+        task = new Task(async () =>
+        {
+            await botClient.SendTextMessageAsync(id, "Введите логин пользователя, пример - \"@testlogin\".");
+        });
+        session.Add(task, SetLogin);
         session.Start();
     }
 
@@ -68,7 +95,6 @@ public class AuthService
         var id = user.Id;
 
         _registrationData[id].name = text;
-        _registrationData[id].username = user.Username ?? "Н/Д";
     }
     
     private async Task SetSurname(ITelegramBotClient botClient, Message message)
@@ -81,8 +107,29 @@ public class AuthService
         var id = user.Id;
 
         _registrationData[id].surname = text;
+        
+    }
+    
+    private async Task SetLogin(ITelegramBotClient botClient, Message message)
+    {
+        var user = message.From;
+        var text = message.Text;
+        if (user is null || text is null)
+            return;
 
-        RegisterUser(id, _registrationData[id].name, _registrationData[id].surname, _registrationData[id].username);
+        var id = user.Id;
+
+        _registrationData[id].username = text;
+
+        if (_context.Employees.Any(e => e.Login == text))
+        {
+            await botClient.SendTextMessageAsync(user.Id, "Пользователь с таким логином уже зарегистрирован!");
+            _registrationData[id].Clear();
+            return;
+        }
+             
+
+        SetWaitRegistration(_registrationData[id].username, _registrationData[id].name, _registrationData[id].surname);
 
         await botClient.SendTextMessageAsync(id, "Регистрация завершена!");
         
@@ -101,6 +148,14 @@ public class AuthService
         var access = new Access(userId, roleId);
         _context.Employees.Add(user);
         _context.Accesses.Add(access);
+        _context.SaveChanges();
+    }
+    
+    private void SetWaitRegistration(string username, string name, string surname)
+    {
+        var waitReg = new WaitRegistration(username, name, surname);
+        
+        _context.WaitRegistrations.Add(waitReg);
         _context.SaveChanges();
     }
 }
