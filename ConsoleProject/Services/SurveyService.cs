@@ -12,9 +12,9 @@ public class SurveyService
 	private readonly ApplicationContext _context;
 	private bool _isStarted;
 
-	public SurveyService(ResponseService responseService, ApplicationContext context)
+	public SurveyService(ResponseService responseService, ApplicationContext context, int pollingDelay)
 	{
-		_pollingDelay = 1000*60*60*24; // Каждые 24 часа
+		_pollingDelay = pollingDelay;
 		_responseService = responseService;
 		_context = context;
 	}
