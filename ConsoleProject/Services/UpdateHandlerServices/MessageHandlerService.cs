@@ -1,134 +1,121 @@
 using Microsoft.Extensions.Logging;
+using System;
+using System.Data;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace ConsoleProject.Services.UpdateHandlerServices;
 
 public class MessageHandlerService
 {
-    private readonly ILogger _logger;
-    private readonly UserService _userService;
-    private readonly AuthService _authService;
-    private readonly ResponseService _responseService;
-    private readonly Dictionary<string, InlineKeyboardMarkup?> _keyboards;
+	private readonly ILogger _logger;
+	private readonly UserService _userService;
+	private readonly AuthService _authService;
+	private readonly ResponseService _responseService;
+	private readonly Dictionary<string, InlineKeyboardMarkup?> _keyboards;
 
-    private readonly Dictionary<long, (string State, string Question)> _userStates =
-        new Dictionary<long, (string, string)>();
+	public MessageHandlerService(
+		UserService userService, 
+		AuthService authService, 
+		ResponseService responseService,
+		ILogger logger,
+		KeyboardService keyboardService
+		)
+	{
+		_logger = logger;
+		_userService = userService;
+		_authService = authService;
+		_responseService = responseService;
 
-    public MessageHandlerService(
-        UserService userService, 
-        AuthService authService, 
-        ResponseService responseService,
-        ILogger logger
-        )
-    {
-        _logger = logger;
-        _userService = userService;
-        _authService = authService;
-        _responseService = responseService;
+		_keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
+		var names = new string[] { "user", "hr" };
+		foreach(var name in names)
+		{
+			_keyboards[name] = keyboardService.GetKeyboard(name);
+		}
+	}
 
-        _keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
-        _keyboards["user"] = new InlineKeyboardMarkup(
-            new InlineKeyboardButton[][]{
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("FAQ", "user_faq_button"),
-                    InlineKeyboardButton.WithCallbackData("Задать вопрос", "user_ask_button")
-                },
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Узнать своё настроение за прошедшие 5 дней", "user_mood_button")
-                }
-            }
-        );
-        _keyboards["hr"] = new InlineKeyboardMarkup(
-            new InlineKeyboardButton[][]{
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Добавить пользователя", "hr_adduser_button"),
-                    InlineKeyboardButton.WithCallbackData("Удалить пользователя", "hr_deluser_button")
-                },
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Получить график настроений пользователей", "hr_mood_button"),
-                    InlineKeyboardButton.WithCallbackData("Получить список открытых вопросов", "hr_getask_button")
-                },
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Редактировать FAQ", "hr_editfaq_button")
-                }
-            }
-        );
-        _keyboards["edit_faq"] = new InlineKeyboardMarkup(
-            new InlineKeyboardButton[][]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Добавить новый FAQ", "hr_add_faq"),
-                    InlineKeyboardButton.WithCallbackData("Изменить существующий FAQ", "hr_modify_faq")
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Удалить FAQ", "hr_delete_faq"),
-                    InlineKeyboardButton.WithCallbackData("Вернуться назад", "hr_back_to_main")
-                }
-            }
-        );
-    }
+	public async Task HandleAsync(ITelegramBotClient botClient, Update update)
+	{
+		var message = update.Message;
+		if (message is null)
+			return;
 
-    public async Task HandleAsync(ITelegramBotClient botClient, Update update)
-    {
-        var message = update.Message;
-        if (message is null)
-            return;
+		var user = message.From;
+		var text = message.Text;
+		if (user is null || text is null)
+			return;
 
-        var user = message.From;
-        if (user is null)
-            return;
+		var id = user.Id;
 
-        var userId = user.Id;
-        var chatId = message.Chat.Id;
+		// Если необходимо отчистить сессию (например при зависании бота)
+		if(text == "/clear")
+		{
+			await _responseService.ClearSessions(id);
+			await botClient.SendTextMessageAsync(
+				id,
+				"Сессия была отчищена.\n"
+			);
+		}
+		// Ожидается ли какой-то ответ от пользователя?
+		else if (_responseService.IsResponseExpected(id))
+		{
+			await _responseService.ReplyAsync(botClient, message);
+		}
+		// Надо ли регать юзера?
+		else if (!_authService.IsUserRegistered(id))
+		{
+			/*await botClient.SendTextMessageAsync(id,
+				"Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться.");*/
+			await _authService.ProcessWaitRegistration(botClient, update);
+		}
+		// Иначе просто выдаем меню
+		else
+		{
+			switch (text)
+			{
+				case "/start":
+				case "/menu":
+					await MainMenuAsync(botClient, id);
+					break;
+				case "/help":
+					await botClient.SendTextMessageAsync(
+						id,
+						"/start или /menu - получить меню.\n" +
+						"/clear - отчистить сессию (поможет, если бот завис).\n" +
+						"/help - получить список команд."
+					);
+					break;
+				default:
+					await botClient.SendTextMessageAsync(
+						id,
+						"На данный момент ответ не ожидается.\n"+
+						"Если Вам нужен список команд, введите \"/help\"."
+					);
+					break;
+			}
 
-        // Ожидается ли какой-то ответ от пользователя?
-        if (_responseService.IsResponseExpected(userId))
-        {
-            _responseService.Reply(botClient, message);
-        }
-        // Надо ли регать юзера?
-        else if (!_authService.IsUserRegistered(userId))
-        {
-            /*await botClient.SendTextMessageAsync(chatId,
-                "Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться. ");*/
-            await _authService.ProcessWaitRegistration(botClient, update);
-        }
-        // Иначе просто выдаем меню
-        else
-        {
-            var chat = message.Chat;
-            var text = message.Text;
-            if (text is null)
-                return;
+			_logger.LogInformation($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
 
-            _logger.LogInformation($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
+			
+		}
+	}
 
-            var role = _userService.GetUserRole(userId) ?? "";
+	public async Task MainMenuAsync(ITelegramBotClient botClient, long id)
+	{
+		var role = _userService.GetUserRole(id) ?? "";
 
-            if (!_keyboards.ContainsKey(role))
-                throw new Exception($"Нет инструкций для роли \"{role}\".");
+		if (!_keyboards.ContainsKey(role))
+		{
+			_logger.LogError($"Not found keyboard for role \"{role}\".");
+			return;
+		}
 
-            await botClient.SendTextMessageAsync(
-                chat.Id,
-                "Меню",
-                replyMarkup: _keyboards[role]
-            );
-        }
-    }
-
-    public InlineKeyboardMarkup? GetKeyboard(string key)
-    {
-        if (_keyboards.ContainsKey(key))
-            return _keyboards[key];
-        else
-        {
-            _logger.LogInformation($"Клавиатура с ключем {key} не найдена.");
-            return null;
-        }
-    }
+		await botClient.SendTextMessageAsync(
+			id,
+			"Меню",
+			replyMarkup: _keyboards[role]
+		);
+	}
 }

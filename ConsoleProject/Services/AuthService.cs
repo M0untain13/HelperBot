@@ -1,5 +1,6 @@
 using ConsoleProject.Models;
 using ConsoleProject.Types.Classes;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -10,12 +11,14 @@ public class AuthService
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
     private readonly Dictionary<long, UserData> _registrationData;
+    private readonly ILogger _logger;
     
     public AuthService(ApplicationContext context, ResponseService responseService)
     {
         _context = context;
         _responseService = responseService;
         _registrationData = new Dictionary<long, UserData>();
+        _logger = _logger;
     }
     
     public bool IsUserRegistered(long id)
@@ -27,7 +30,7 @@ public class AuthService
     public async Task ProcessWaitRegistration(ITelegramBotClient botClient, Update update)
     {
         long tg_id = update.Message.From.Id;
-        string login = "@" + update.Message.From.Username;
+        string login = update.Message.From.Username;
         if (!IsUserRegistered(tg_id))
         {
             var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
@@ -82,7 +85,7 @@ public class AuthService
             await botClient.SendTextMessageAsync(id, "Введите логин пользователя, пример - \"@testlogin\".");
         });
         session.Add(task, SetLogin);
-        session.Start();
+        await session.StartAsync();
     }
 
     private async Task SetName(ITelegramBotClient botClient, Message message)
@@ -121,9 +124,9 @@ public class AuthService
 
         _registrationData[id].username = text;
 
-        if (_context.Employees.Any(e => e.Login == text))
+        if (_context.WaitRegistrations.Any(e => e.Login == text))
         {
-            await botClient.SendTextMessageAsync(user.Id, "Пользователь с таким логином уже зарегистрирован!");
+            await botClient.SendTextMessageAsync(user.Id, "Пользователь с таким логином уже находится в листе ожидания!");
             _registrationData[id].Clear();
             return;
         }
@@ -135,7 +138,8 @@ public class AuthService
         
         _registrationData[id].Clear();
         _registrationData.Remove(id);
-        _responseService.GetSessionProxy(id)?.Close();
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
     }
 
     private void RegisterUser(long userId, string name, string surname, string username)
@@ -158,4 +162,52 @@ public class AuthService
         _context.WaitRegistrations.Add(waitReg);
         _context.SaveChanges();
     }
+
+    public async Task DeleteUserHandle(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    {
+        var session = _responseService.CreateSession(callbackQuery.Message.Chat.Id);
+        
+        Task task;
+        task = new Task(async () =>
+        {
+            await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Введите логин пользователя, которого хотите удалить:");
+        });
+        session.Add(task, DeleteUserByHR);
+        await session.StartAsync();
+    }
+    
+    public async Task DeleteUserByHR(ITelegramBotClient botClient, Message message)
+    {
+        var text = message.From;
+        if (string.IsNullOrEmpty(message.Text))
+        {
+            await botClient.SendTextMessageAsync(message.Chat.Id, "Пожалуйста, укажите логин пользователя для удаления.");
+            return;
+        }
+
+        var login = message.Text.Trim();
+        var user = _context.Employees.FirstOrDefault(e => e.Login == login);
+
+        if (user == null)
+        {
+            await botClient.SendTextMessageAsync(message.Chat.Id, $"Пользователь с логином {login} не найден.");
+            return;
+        }
+
+        var userId = user.TelegramId;
+
+        var access = _context.Accesses.FirstOrDefault(a => a.TelegramId == userId);
+        if (access != null)
+        {
+            _context.Accesses.Remove(access);
+        }
+
+        _context.Employees.Remove(user);
+        _context.SaveChanges();
+        var session = await _responseService.GetSessionProxyAsync(message.Chat.Id);
+        session?.Close();
+
+        await botClient.SendTextMessageAsync(message.Chat.Id, $"Пользователь с логином {login} успешно удален.");
+    }
+    
 }
