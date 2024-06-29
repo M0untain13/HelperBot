@@ -123,5 +123,40 @@ public class OpenQuestionService
 			session?.Close();
 		}
 	}
+
+	public async Task GetAllOpenquestionsByUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	{
+		var chat = callbackQuery.Message?.Chat;
+		if (chat is null)
+			return;
+
+		var id = chat.Id;
+
+		var openQuestions = _context.OpenQuestions.Where(e => e.TelegramId == id).ToList();
+		if (openQuestions.Any())
+		{
+			StringBuilder sb = new StringBuilder("Ваши открытые ворпосы:\n");
+			int index = 1;
+
+			var selectionMap = new Dictionary<int, int>();
+			_faqSelections[id] = selectionMap;
+
+			foreach (var openQuestion in openQuestions)
+			{
+				sb.AppendLine($"{index} - Вопрос: {openQuestion.Question}\n   Ответ: {openQuestion.Answer}");
+				sb.AppendLine();
+				selectionMap[index] = openQuestion.Id;
+				index++;
+			}
+
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+			await botClient.SendTextMessageAsync(id, sb.ToString());
+		}
+		else
+		{
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+			await botClient.SendTextMessageAsync(id, "У вас пока нет заданных открытых вопросов.");
+		}
+	}
 	
 }

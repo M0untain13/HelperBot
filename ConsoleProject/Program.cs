@@ -15,6 +15,7 @@ public class Program
     /// </param>
     private static void Main(string[] args)
 	{
+		Console.WriteLine(args.Length);
 		// https://t.me/Tg0Test13_bot
 		if (args.Length != 5)
 		{

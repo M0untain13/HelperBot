@@ -13,7 +13,7 @@ public class UserButtonService : IButtonService
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
 
-    public UserButtonService(ApplicationContext contex, ResponseService responseService)
+    public UserButtonService(ApplicationContext contex, ResponseService responseService, OpenQuestionService openQuestionService)
     {
         _context = contex;
         _responseService = responseService;
@@ -21,6 +21,7 @@ public class UserButtonService : IButtonService
         _handlers["user_faq_button"]  = GetFaqAsync;
         _handlers["user_ask_button"]  = AskAsync;
         _handlers["user_mood_button"] = GetMoodAsync;
+        _handlers["user_open_questions_button"] = openQuestionService.GetAllOpenquestionsByUser;
     }
 
     public bool IsButtonExist(string buttonName)

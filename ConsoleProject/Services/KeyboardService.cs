@@ -17,11 +17,14 @@ public class KeyboardService
             {
                 [
                     InlineKeyboardButton.WithCallbackData("FAQ", "user_faq_button"),
-                    InlineKeyboardButton.WithCallbackData("Задать вопрос", "user_ask_button")
+                    InlineKeyboardButton.WithCallbackData("Настроение за пять дней", "user_mood_button")
                 ],
                 [
-                    InlineKeyboardButton.WithCallbackData("Настроение за пять дней", "user_mood_button")
-                ]
+                    InlineKeyboardButton.WithCallbackData("Задать вопрос", "user_ask_button"),
+                    InlineKeyboardButton.WithCallbackData("Мои открытые вопросы", "user_open_questions_button"),
+
+                ],
+                
             }
         );
         _keyboards["hr"] = new InlineKeyboardMarkup(
