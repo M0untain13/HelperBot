@@ -87,18 +87,15 @@ public class UserButtonService : IButtonService
     private async Task AddOpenQuestion(ITelegramBotClient botClient, Message message)
     {
         var user = message.From;
-        var chatId = message.Chat.Id;
+        var telegramId = message.Chat.Id;
         var text = message.Text;
         if (user is null || text is null)
             return;
 
-        // TODO: Потом доделать, когда появится модель открытого вопроса
-        throw new NotImplementedException("Метод AddOpenQuestion не доделан.");
-        /*
-         var openQuestion = new ???(id, text);
-        _context.???.Add(openQuestion);
-        _context.SaveChanges();
-         */
+         var openQuestion = new OpenQuestion(telegramId, text);
+        _context.OpenQuestions.Add(openQuestion);
+        await _context.SaveChangesAsync();
+        await botClient.SendTextMessageAsync(telegramId, "Ваш вопрос был записан.");
     }
 
     private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
