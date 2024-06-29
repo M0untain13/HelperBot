@@ -6,6 +6,7 @@ using Telegram.Bot.Types.Enums;
 using ConsoleProject.Services.UpdateHandlerServices;
 using ConsoleProject.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConsoleProject;
 
@@ -15,15 +16,18 @@ public class Bot
 	private readonly CallbackQueryHandlerService _callbackQueryHandlerService;
 	private readonly SurveyService _surveyService;
 	private readonly ILogger _logger;
+	private readonly ApplicationContext _context;
 
 	public Bot(
 		MessageHandlerService messageHandlerService, 
 		CallbackQueryHandlerService callbackQueryHandlerService, 
 		SurveyService interviewer,
-		ILogger logger
+		ILogger logger,
+		ApplicationContext context
 		)
 	{
-		_messageHandlerService = messageHandlerService;
+		_context = context;
+        _messageHandlerService = messageHandlerService;
 		_callbackQueryHandlerService = callbackQueryHandlerService;
         _surveyService = interviewer;
 		_logger = logger;
@@ -44,7 +48,7 @@ public class Bot
 		botClient.StartReceiving(UpdateHandlerAsync, ErrorHandler, receiverOptions, cancellationTokenSource.Token);
 		var me = await botClient.GetMeAsync();
 		_logger.LogInformation($"{me.FirstName} запущен!");
-		// await _surveyService.StartAsync(botClient);
+		await _surveyService.StartAsync(botClient);
 		await Task.Delay(-1);
 	}
 	
@@ -53,7 +57,17 @@ public class Bot
 	{
 		try
 		{
-			switch (update.Type)
+            var id = update?.Message?.From?.Id;
+            var loginFromUser = update?.Message?.From?.Username;
+            var loginFromDatabase = _context.Employees.FirstOrDefault(e => e.TelegramId == id)?.Login;
+
+            if (loginFromDatabase != loginFromUser)
+            {
+                _context.Employees.FirstOrDefault(e => e.TelegramId == id).Login = loginFromUser;
+                await _context.SaveChangesAsync();
+            }
+
+            switch (update.Type)
 			{
 				case UpdateType.Message:
 					await _messageHandlerService.HandleAsync(botClient, update);
