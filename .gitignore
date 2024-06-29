@@ -365,3 +365,6 @@ FodyWeavers.xsd
 .DS_Store
 
 .idea
+
+start.bat
+start.sh
