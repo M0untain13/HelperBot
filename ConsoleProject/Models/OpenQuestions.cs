@@ -6,17 +6,17 @@ namespace ConsoleProject.Models
     [Table("open_questions")]
     public class OpenQuestion
     {
-        public OpenQuestion(int id, long telegramId, string question, string answer)
+        public OpenQuestion(long telegramId, string question, string? answer = null)
         {
-            Id = id;
             TelegramId = telegramId;
             Question = question;
             Answer = answer;
         }
-        
+
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("id")]
         public int Id { get; set; }
-        
+
         [Column("telegram_id")]
         public long TelegramId { get; set; }
         
@@ -27,6 +27,6 @@ namespace ConsoleProject.Models
         
         [MaxLength(512)]
         [Column("answer")]
-        public string Answer { get; set; }
+        public string? Answer { get; set; }
     }
 }
