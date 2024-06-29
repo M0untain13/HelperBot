@@ -14,13 +14,14 @@ public class HrButtonService : IButtonService
     public HrButtonService(
         FaqService faqService,
         KeyboardService keyboardService,
-        AuthService authService
+        AuthService authService,
+        SurveyService surveyService
         )
     {
         _handlers = new Dictionary<string, ButtonHandle>();
         _handlers["hr_adduser_button"] = authService.RegisterUserByHR;
         _handlers["hr_deluser_button"] = authService.DeleteUserHandle;
-        _handlers["hr_mood_button"]    = GetMoodAsync;
+        _handlers["hr_mood_button"]    = surveyService.GetMoodUser;
         _handlers["hr_getask_button"]  = GetQuestionAsync;
 
         _handlers["hr_editfaq_button"] = EditFaqMenuAsync;

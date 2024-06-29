@@ -11,14 +11,12 @@ public class AuthService
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
     private readonly Dictionary<long, UserData> _registrationData;
-    private readonly ILogger _logger;
     
     public AuthService(ApplicationContext context, ResponseService responseService)
     {
         _context = context;
         _responseService = responseService;
         _registrationData = new Dictionary<long, UserData>();
-        _logger = _logger;
     }
     
     public bool IsUserRegistered(long id)
@@ -82,7 +80,7 @@ public class AuthService
         session.Add(task, SetSurname);
         task = new Task(async () =>
         {
-            await botClient.SendTextMessageAsync(id, "Введите логин пользователя, пример - \"@testlogin\".");
+            await botClient.SendTextMessageAsync(id, "Введите логин пользователя, без знака @.");
         });
         session.Add(task, SetLogin);
         await session.StartAsync();
