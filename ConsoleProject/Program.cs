@@ -25,6 +25,7 @@ public class Program
 		var moodPollingDelay = 1000 * 60 * 60 * 24;
 		var databaseConnection = "Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234";
 		var sessionClearDelay = 1000 * 60 * 60 * 24;
+		var socketPort = 11111;
 
         var loggerFactory = LoggerFactory.Create(
 			builder =>
@@ -47,7 +48,15 @@ public class Program
 							.UseLoggerFactory(loggerFactory)
 					)
 					.AddSingleton<UserService>()
-					.AddSingleton<AuthService>()
+					.AddSingleton(
+						provider =>
+						{
+                            var responseService = provider.GetRequiredService<ResponseService>();
+                            var context = provider.GetRequiredService<ApplicationContext>();
+                            var logger = provider.GetRequiredService<ILogger>();
+                            return new AuthService(context, responseService, logger, socketPort);
+						}
+					)
 					.AddSingleton(
 						provider =>
 						{
