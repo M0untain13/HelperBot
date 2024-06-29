@@ -1,6 +1,8 @@
 ﻿using ConsoleProject.Models;
 using Microsoft.Extensions.Logging;
 using System.Data;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -106,5 +108,63 @@ public class SurveyService
                 return;
             await session.StartAsync();
         }
+	}
+
+	public async Task GetMoodUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	{
+		var session = _responseService.CreateSession(callbackQuery.Message.Chat.Id);
+        
+		Task task;
+		task = new Task(async () =>
+		{
+			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Введите логин пользователя, у которого хотите получить график настроения:");
+		});
+		session.Add(task, GetMoodUserByHR);
+		await session.StartAsync();
+	}
+
+	private async Task GetMoodUserByHR(ITelegramBotClient botClient, Message message)
+	{
+		var chat = message.From;
+		if (chat is null)
+			return;
+
+		var id = chat.Id;
+
+		var login = message.Text;
+		if (login is null)
+			return;
+
+		var employee = _context.Employees.FirstOrDefault(a => a.Login == login);
+		if (employee is null)
+		{
+			await botClient.SendTextMessageAsync(id, "Пользователя с таким логином не существует.");
+			var session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+			return;
+		}
+		
+		var moods = _context.Moods.Where(a => a.TelegramId == employee.TelegramId).ToList();
+		if (moods.Any())
+		{
+			StringBuilder sb = new StringBuilder($"Список настроения пользователя - {employee.Name} {employee.Surname}\n");
+			
+			foreach (var mood in moods)
+			{
+				sb.AppendLine($"Дата - {mood.SurveyDate.ToShortDateString()}\nОценка - {mood.Mark}");
+				sb.AppendLine();
+			}
+			
+			await botClient.SendTextMessageAsync(id, sb.ToString());
+			
+			var session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+		}
+		else
+		{
+			await botClient.SendTextMessageAsync(id, "У данного пользователя пока нет оценок настроения.");
+			var session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+		}
 	}
 }
