@@ -10,23 +10,23 @@ namespace ConsoleProject;
 
 public class Program
 {
-    /*
-	"7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak"
-	"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234"
-	86400000
-	86400000
-	11111
-	 */
     /// <param name="args">
     /// Args: token, dbConnection, moodPollingDelay, sessionClearDelay, socketPort
     /// </param>
     private static void Main(string[] args)
 	{
 		// https://t.me/Tg0Test13_bot
-		var host = CreateHostBuilder(args).Build();
-		var bot = host.Services.GetRequiredService<Bot>();
-        var token = args[0];
-        bot.StartAsync(token).Wait();
+		if (args.Length != 5)
+		{
+			Console.WriteLine("Ошибка! Аргументов должно быть пять: token, dbConnection, moodPollingDelay, sessionClearDelay, socketPort.");
+		}
+		else
+		{
+            var host = CreateHostBuilder(args).Build();
+            var bot = host.Services.GetRequiredService<Bot>();
+            var token = args[0];
+            bot.StartAsync(token).Wait();
+        }
     }
 
 	private static IHostBuilder CreateHostBuilder(string[] args)
