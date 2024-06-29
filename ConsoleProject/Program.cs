@@ -17,51 +17,63 @@ public class Program
 		var host = CreateHostBuilder(args).Build();
 		var bot = host.Services.GetRequiredService<Bot>();
 		bot.StartAsync("7382436094:AAHdjujRTLSXCQFzozdmJWQl-RiZOsXmcak").Wait();
-	}
+    }
 
-	private static IHostBuilder CreateHostBuilder(string[] args) =>
-		Host.CreateDefaultBuilder(args).ConfigureServices(
+	private static IHostBuilder CreateHostBuilder(string[] args)
+	{
+		// TODO: эти переменные в будущем должны получаться из массива args
+		var moodPollingDelay = 1000 * 60 * 60 * 24;
+		var databaseConnection = "Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234";
+		var sessionClearDelay = 1000 * 60 * 60 * 24;
+
+        var loggerFactory = LoggerFactory.Create(
+			builder =>
+			{
+				builder.AddConsole(
+					options =>
+					{
+						options.TimestampFormat = "[HH:mm:ss] ";
+					}
+				);
+			});
+
+		return Host.CreateDefaultBuilder(args).ConfigureServices(
 			(services) => {
 				services
 					.AddDbContext<ApplicationContext>(
 						options => options
-							.UseNpgsql(
-								"Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234"
-							)
-							.UseLoggerFactory(
-								LoggerFactory.Create(builder =>
-								{
-									builder.AddConsole(
-										options => {
-											options.TimestampFormat = "[HH:mm:ss] ";
-										}
-									);
-								})
-                            )
+							.UseNpgsql(databaseConnection)
+							.UseLoggerFactory(loggerFactory)
 					)
 					.AddSingleton<UserService>()
 					.AddSingleton<AuthService>()
-					.AddSingleton<ResponseService>()
+					.AddSingleton(
+                        provider =>
+						{
+							var logger = provider.GetRequiredService<ILogger>();
+							return new ResponseService(logger, sessionClearDelay);
+                        }
+					)
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
 					.AddSingleton<HrButtonService>()
 					.AddSingleton<FaqService>()
 					.AddSingleton<UserButtonService>()
-					.AddSingleton<SurveyService>()
-					.AddSingleton<Bot>()
 					.AddSingleton(
-						_ => {
-							ILogger logger = LoggerFactory.Create(builder =>
-							{
-								builder.AddConsole(
-									options => {
-										options.TimestampFormat = "[HH:mm:ss] ";
-									}
-								);
-							}).CreateLogger<Program>();
-							return logger;
+						provider =>
+						{
+							var responseService = provider.GetRequiredService<ResponseService>();
+							var context = provider.GetRequiredService<ApplicationContext>();
+							var logger = provider.GetRequiredService<ILogger>();
+                            return new SurveyService(responseService, context, logger, moodPollingDelay);
 						}
-					);
+					)
+					.AddSingleton<Bot>()
+					.AddSingleton<ILogger>(
+						_ => loggerFactory.CreateLogger<Program>()
+                    )
+					.AddSingleton<KeyboardService>();
 			}
 		);
+	}
 }

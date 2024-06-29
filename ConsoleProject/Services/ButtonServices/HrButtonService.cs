@@ -2,18 +2,24 @@
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using ConsoleProject.Types.Delegates;
+using System.Data;
 
 namespace ConsoleProject.Services.ButtonServices;
 
 public class HrButtonService : IButtonService
 {
     private readonly Dictionary<string, ButtonHandle> _handlers;
+    private readonly Dictionary<string, InlineKeyboardMarkup?> _keyboards;
 
-    public HrButtonService(FaqService faqService)
+    public HrButtonService(
+        FaqService faqService,
+        KeyboardService keyboardService,
+        AuthService authService
+        )
     {
         _handlers = new Dictionary<string, ButtonHandle>();
-        _handlers["hr_adduser_button"] = AddUserAsync;
-        _handlers["hr_deluser_button"] = DelUserAsync;
+        _handlers["hr_adduser_button"] = authService.RegisterUserByHR;
+        _handlers["hr_deluser_button"] = authService.DeleteUserHandle;
         _handlers["hr_mood_button"]    = GetMoodAsync;
         _handlers["hr_getask_button"]  = GetQuestionAsync;
 
@@ -22,6 +28,13 @@ public class HrButtonService : IButtonService
         _handlers["hr_modify_faq"]     = faqService.GetAllFaqsAsync;
         _handlers["hr_delete_faq"]     = faqService.RequestDeleteFaqAsync;
         _handlers["hr_back_to_main"]   = BackFromFaqToMainAsync;
+
+        _keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
+        var names = new string[] { "hr", "edit_faq" };
+        foreach (var name in names)
+        {
+            _keyboards[name] = keyboardService.GetKeyboard(name);
+        }
     }
 
     public bool IsButtonExist(string buttonName)
@@ -105,22 +118,7 @@ public class HrButtonService : IButtonService
 
         var id = chat.Id;
 
-        var keyboard = new InlineKeyboardMarkup(
-            new InlineKeyboardButton[][]{
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Добавить пользователя", "hr_adduser_button"),
-                    InlineKeyboardButton.WithCallbackData("Удалить пользователя", "hr_deluser_button")
-                },
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Получить график настроений пользователей", "hr_mood_button"),
-                    InlineKeyboardButton.WithCallbackData("Получить список открытых вопросов", "hr_getask_button")
-                },
-                new InlineKeyboardButton[]{
-                    InlineKeyboardButton.WithCallbackData("Редактировать FAQ", "hr_editfaq_button")
-                }
-            }
-        );
-        
+        var keyboard = _keyboards["hr"];
         await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         await botClient.SendTextMessageAsync(
             chat.Id, 
@@ -137,22 +135,7 @@ public class HrButtonService : IButtonService
 
         var id = chat.Id;
 
-        var keyboard = new InlineKeyboardMarkup(
-            new InlineKeyboardButton[][]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Добавить новый FAQ", "hr_add_faq"),
-                    InlineKeyboardButton.WithCallbackData("Изменить существующий FAQ", "hr_modify_faq")
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Удалить FAQ", "hr_delete_faq"),
-                    InlineKeyboardButton.WithCallbackData("Вернуться назад", "hr_back_to_main")
-                }
-            }
-        );
-        
+        var keyboard = _keyboards["edit_faq"];
         await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         await botClient.SendTextMessageAsync(
             chat.Id, 
