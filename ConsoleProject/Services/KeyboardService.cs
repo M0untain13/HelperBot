@@ -20,7 +20,7 @@ public class KeyboardService
                     InlineKeyboardButton.WithCallbackData("Задать вопрос", "user_ask_button")
                 ],
                 [
-                    InlineKeyboardButton.WithCallbackData("Узнать своё настроение за прошедшие 5 дней", "user_mood_button")
+                    InlineKeyboardButton.WithCallbackData("Настроение за пять дней", "user_mood_button")
                 ]
             }
         );
@@ -31,8 +31,8 @@ public class KeyboardService
                     InlineKeyboardButton.WithCallbackData("Удалить пользователя", "hr_deluser_button")
                 ],
                 [
-                    InlineKeyboardButton.WithCallbackData("Получить график настроений пользователей", "hr_mood_button"),
-                    InlineKeyboardButton.WithCallbackData("Получить список открытых вопросов", "hr_getask_button")
+                    InlineKeyboardButton.WithCallbackData("График настроений", "hr_mood_button"),
+                    InlineKeyboardButton.WithCallbackData("Открытые вопросы", "hr_getask_button")
                 ],
                 [
                     InlineKeyboardButton.WithCallbackData("Редактировать FAQ", "hr_editfaq_button")
@@ -44,7 +44,7 @@ public class KeyboardService
              {
                 [
                     InlineKeyboardButton.WithCallbackData("Добавить новый FAQ", "hr_add_faq"),
-                    InlineKeyboardButton.WithCallbackData("Изменить существующий FAQ", "hr_modify_faq")
+                    InlineKeyboardButton.WithCallbackData("Изменить FAQ", "hr_modify_faq")
                 ],
                 [
                     InlineKeyboardButton.WithCallbackData("Удалить FAQ", "hr_delete_faq"),
