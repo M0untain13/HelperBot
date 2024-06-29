@@ -15,14 +15,15 @@ public class HrButtonService : IButtonService
         FaqService faqService,
         KeyboardService keyboardService,
         AuthService authService,
-        SurveyService surveyService
+        SurveyService surveyService,
+        OpenQuestionService openQuestionService
         )
     {
         _handlers = new Dictionary<string, ButtonHandle>();
         _handlers["hr_adduser_button"] = authService.RegisterUserByHR;
         _handlers["hr_deluser_button"] = authService.DeleteUserHandle;
         _handlers["hr_mood_button"]    = surveyService.GetMoodUser;
-        _handlers["hr_getask_button"]  = GetQuestionAsync;
+        _handlers["hr_getask_button"]  = openQuestionService.GetAllOpenQuestions;
 
         _handlers["hr_editfaq_button"] = EditFaqMenuAsync;
         _handlers["hr_add_faq"]        = faqService.StartFaqProcessAsync;

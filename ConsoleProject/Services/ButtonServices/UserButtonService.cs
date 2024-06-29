@@ -95,6 +95,8 @@ public class UserButtonService : IButtonService
          var openQuestion = new OpenQuestion(telegramId, text);
         _context.OpenQuestions.Add(openQuestion);
         await _context.SaveChangesAsync();
+        var session = await _responseService.GetSessionProxyAsync(message.Chat.Id);
+        session?.Close();
         await botClient.SendTextMessageAsync(telegramId, "Ваш вопрос был записан.");
     }
 

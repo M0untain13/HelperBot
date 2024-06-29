@@ -38,7 +38,8 @@ public class Program
 			});
 
 		return Host.CreateDefaultBuilder(args).ConfigureServices(
-			(services) => {
+			(services) =>
+			{
 				services
 					.AddDbContext<ApplicationContext>(
 						options => options
@@ -48,11 +49,11 @@ public class Program
 					.AddSingleton<UserService>()
 					.AddSingleton<AuthService>()
 					.AddSingleton(
-                        provider =>
+						provider =>
 						{
 							var logger = provider.GetRequiredService<ILogger>();
 							return new ResponseService(logger, sessionClearDelay);
-                        }
+						}
 					)
 					.AddSingleton<MessageHandlerService>()
 					.AddSingleton<CallbackQueryHandlerService>()
@@ -65,14 +66,15 @@ public class Program
 							var responseService = provider.GetRequiredService<ResponseService>();
 							var context = provider.GetRequiredService<ApplicationContext>();
 							var logger = provider.GetRequiredService<ILogger>();
-                            return new SurveyService(responseService, context, logger, moodPollingDelay);
+							return new SurveyService(responseService, context, logger, moodPollingDelay);
 						}
 					)
 					.AddSingleton<Bot>()
 					.AddSingleton<ILogger>(
 						_ => loggerFactory.CreateLogger<Program>()
-                    )
-					.AddSingleton<KeyboardService>();
+					)
+					.AddSingleton<KeyboardService>()
+					.AddSingleton<OpenQuestionService>();
 			}
 		);
 	}
