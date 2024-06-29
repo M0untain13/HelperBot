@@ -32,7 +32,7 @@ public class OpenQuestionService
 
 		var id = chat.Id;
 
-		var openQuestions = _context.OpenQuestions.ToList();
+		var openQuestions = _context.OpenQuestions.Where(e => e.Answer == null).ToList();
 		if (openQuestions.Any())
 		{
 			StringBuilder sb = new StringBuilder("Выберите номер вопроса на которых хотите дать ответ:\n");
@@ -81,7 +81,7 @@ public class OpenQuestionService
 				{
 					await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
 				});
-				var session = _responseService.CreateSession(chatId);
+				var session = await _responseService.GetSessionProxyAsync(chatId);
 
 				session.Add(task,  (botClient, message) => GiveAnswerForOpenQuestion(botClient, message, openQuestionId));
 				await session.StartAsync();
@@ -105,8 +105,7 @@ public class OpenQuestionService
 	{
 		var chatId = message.Chat.Id;
 		var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
-		await botClient.SendTextMessageAsync(chatId, $"Ответ на вопрос был успешно добавлен {openQuestionToAnswer.Question}.");
-
+		
 		if (openQuestionToAnswer != null)
 		{
 			openQuestionToAnswer.Answer = message.Text;
