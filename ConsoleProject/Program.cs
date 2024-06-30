@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ConsoleProject.Services;
 using ConsoleProject.Services.ButtonServices;
 using ConsoleProject.Services.UpdateHandlerServices;
-using Microsoft.Extensions.Logging;
 
 namespace ConsoleProject;
 
@@ -31,7 +31,6 @@ public class Program
 
 	private static IHostBuilder CreateHostBuilder(string[] args)
 	{
-		// TODO: эти переменные в будущем должны получаться из массива args
 		var databaseConnection = args[1];
 		var moodPollingDelay = Convert.ToInt32(args[2]);
 		var sessionClearDelay = Convert.ToInt32(args[3]);
@@ -52,12 +51,20 @@ public class Program
 			(services) =>
 			{
 				services
-					.AddDbContext<ApplicationContext>(
+					.AddSingleton<MessageHandlerService>()
+                    .AddSingleton<CallbackQueryHandlerService>()
+                    .AddSingleton<HrButtonService>()
+                    .AddSingleton<FaqService>()
+                    .AddSingleton<UserButtonService>()
+                    .AddSingleton<UserService>()
+                    .AddSingleton<Bot>()
+                    .AddSingleton<KeyboardService>()
+                    .AddSingleton<OpenQuestionService>()
+                    .AddDbContext<ApplicationContext>(
 						options => options
 							.UseNpgsql(databaseConnection)
 							.UseLoggerFactory(loggerFactory)
 					)
-					.AddSingleton<UserService>()
 					.AddSingleton(
 						provider =>
 						{
@@ -74,11 +81,6 @@ public class Program
 							return new ResponseService(logger, sessionClearDelay);
 						}
 					)
-					.AddSingleton<MessageHandlerService>()
-					.AddSingleton<CallbackQueryHandlerService>()
-					.AddSingleton<HrButtonService>()
-					.AddSingleton<FaqService>()
-					.AddSingleton<UserButtonService>()
 					.AddSingleton(
 						provider =>
 						{
@@ -88,12 +90,9 @@ public class Program
 							return new SurveyService(responseService, context, logger, moodPollingDelay);
 						}
 					)
-					.AddSingleton<Bot>()
 					.AddSingleton<ILogger>(
 						_ => loggerFactory.CreateLogger<Program>()
-					)
-					.AddSingleton<KeyboardService>()
-					.AddSingleton<OpenQuestionService>();
+					);
 			}
 		);
 	}
