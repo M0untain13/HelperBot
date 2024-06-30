@@ -38,7 +38,7 @@ public class UserButtonService : IButtonService
 
     private async Task GetFaqAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id;
+        var id = callbackQuery.Message?.Chat.Id;
         if (id is null)
             throw new NullReferenceException(nameof(id));
 
@@ -64,7 +64,7 @@ public class UserButtonService : IButtonService
 
     private async Task AskAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id;
+        var id = callbackQuery.Message?.Chat.Id;
         if (id is null)
             throw new NullReferenceException(nameof(id));
 
@@ -97,7 +97,7 @@ public class UserButtonService : IButtonService
 
     private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id;
+        var id = callbackQuery.Message?.Chat.Id;
         if (id is null)
             throw new NullReferenceException(nameof(id));
 

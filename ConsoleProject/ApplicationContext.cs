@@ -14,4 +14,11 @@ public class ApplicationContext : DbContext
 	public DbSet<Access> Accesses { get; set; }
 	public DbSet<WaitRegistration> WaitRegistrations { get; set; }
 	public DbSet<OpenQuestion> OpenQuestions { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+		base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Mood>().HasKey(m => new { m.TelegramId, m.SurveyDate });
+        modelBuilder.Entity<OpenQuestion>().HasKey(oq => new { oq.Id, oq.TelegramId });
+    }
 }

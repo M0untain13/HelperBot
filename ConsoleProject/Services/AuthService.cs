@@ -128,7 +128,7 @@ public class AuthService
 
 	public async Task RegisterUserByHR(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var id = callbackQuery.Message?.From?.Id ?? -1;
+		var id = callbackQuery.Message?.Chat.Id ?? -1;
 		if (id == -1)
 			return;
 		
@@ -224,7 +224,7 @@ public class AuthService
 
 	public async Task DeleteUserHandle(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-        var id = callbackQuery.Message?.From?.Id ?? -1;
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
         if (id == -1)
             return;
 
@@ -277,7 +277,7 @@ public class AuthService
 	
 	public async Task GetAllUsersAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-        var id = callbackQuery.Message?.From?.Id ?? -1;
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
         if (id == -1)
             return;
 

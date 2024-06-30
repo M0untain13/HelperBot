@@ -57,7 +57,7 @@ public class HrButtonService : IButtonService
 
     private async Task BackFromFaqToMainAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id ?? -1;
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
         if (id == -1)
             return;
 
@@ -72,7 +72,7 @@ public class HrButtonService : IButtonService
     
     private async Task EditFaqMenuAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id ?? -1;
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
         if (id == -1)
             return;
 
@@ -87,7 +87,7 @@ public class HrButtonService : IButtonService
     
     private async Task GetMoodUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var id = callbackQuery.Message?.From?.Id ?? -1;
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
         if (id == -1)
             return;
 

@@ -13,12 +13,10 @@ public class OpenQuestion
         Answer = answer;
     }
 
-    [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Column("id")]
     public int Id { get; set; }
 
-    [Key]
     [Column("telegram_id")]
     public long TelegramId { get; set; }
     

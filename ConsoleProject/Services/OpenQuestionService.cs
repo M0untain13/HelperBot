@@ -22,7 +22,7 @@ public class OpenQuestionService
     
     public async Task GetAllOpenQuestions(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var id = callbackQuery.Message?.From?.Id ?? -1;
+		var id = callbackQuery.Message?.Chat.Id ?? -1;
 		if (id == -1)
 			throw new NullReferenceException(nameof(id));
 
@@ -128,7 +128,7 @@ public class OpenQuestionService
 
 	public async Task GetAllOpenquestionsByUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var id = callbackQuery.Message?.From?.Id ?? -1;
+		var id = callbackQuery.Message?.Chat.Id ?? -1;
 		if (id == -1)
             throw new NullReferenceException(nameof(id));
 

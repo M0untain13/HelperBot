@@ -6,11 +6,9 @@ namespace ConsoleProject.Models;
 [Table("mood")]
 public class Mood
 {
-    [Key]
     [Column("telegram_id")]
 	public long TelegramId { get; set; }
 
-    [Key]
     [Column("survey_date")]
 	public DateTime SurveyDate { get; set; }
 	
