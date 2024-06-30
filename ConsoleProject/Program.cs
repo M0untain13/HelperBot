@@ -37,19 +37,16 @@ public class Program
 		var socketPort = Convert.ToInt32(args[4]);
 
         var loggerFactory = LoggerFactory.Create(
-			builder =>
-			{
+			builder => {
 				builder.AddConsole(
-					options =>
-					{
+					options => {
 						options.TimestampFormat = "[HH:mm:ss] ";
 					}
 				);
 			});
 
 		return Host.CreateDefaultBuilder(args).ConfigureServices(
-			(services) =>
-			{
+			(services) => {
 				services
 					.AddSingleton<MessageHandlerService>()
                     .AddSingleton<CallbackQueryHandlerService>()
@@ -66,8 +63,7 @@ public class Program
 							.UseLoggerFactory(loggerFactory)
 					)
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
                             var responseService = provider.GetRequiredService<ResponseService>();
                             var context = provider.GetRequiredService<ApplicationContext>();
                             var logger = provider.GetRequiredService<ILogger>();
@@ -75,15 +71,13 @@ public class Program
 						}
 					)
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
 							var logger = provider.GetRequiredService<ILogger>();
 							return new ResponseService(logger, sessionClearDelay);
 						}
 					)
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
 							var responseService = provider.GetRequiredService<ResponseService>();
 							var context = provider.GetRequiredService<ApplicationContext>();
 							var logger = provider.GetRequiredService<ILogger>();

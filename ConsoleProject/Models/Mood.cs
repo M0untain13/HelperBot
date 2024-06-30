@@ -14,7 +14,6 @@ public class Mood
     [Column("survey_date")]
 	public DateTime SurveyDate { get; set; }
 	
-
 	[Required]
 	[Column("mark")]
 	public int Mark { get; set; }

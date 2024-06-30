@@ -29,14 +29,12 @@ public class CallbackQueryHandlerService
     {
         var callbackQuery = update.CallbackQuery;
         if (callbackQuery is null)
-            return;
+            throw new NullReferenceException(nameof(callbackQuery));
 
         var button = callbackQuery.Data;
-        var chat = callbackQuery.Message?.Chat;
-        if (button is null || chat is null)
-            return;
-
-        var id = chat.Id;
+        var id = callbackQuery.From.Id;
+        if (button is null)
+            throw new NullReferenceException(nameof(button));
 
         _logger.LogInformation($"({id}) нажал на кнопку \"{button}\"");
 

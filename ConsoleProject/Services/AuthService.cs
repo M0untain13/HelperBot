@@ -1,11 +1,11 @@
-using ConsoleProject.Models;
-using ConsoleProject.Types.Classes;
 using System.Net.Sockets;
 using System.Net;
+using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Microsoft.Extensions.Logging;
-using System.Text;
+using ConsoleProject.Models;
+using ConsoleProject.Types.Classes;
 
 namespace ConsoleProject.Services;
 
@@ -69,12 +69,12 @@ public class AuthService
                                     await _context.AddAsync(waitReg);
                                     await _context.SaveChangesAsync();
                                     byte[] message = Encoding.ASCII.GetBytes("Done");
-                                    client.Send(message);
+                                    await client.SendAsync(message);
                                 }
 								catch (Exception ex)
 								{
                                     byte[] message = Encoding.ASCII.GetBytes("Error\n" + ex.Message);
-                                    client.Send(message);
+                                    await client.SendAsync(message);
                                     logger.LogError(ex.Message);
                                 }
 
@@ -100,43 +100,37 @@ public class AuthService
 		return _context.Employees.Any(e => e.TelegramId == id);
 	}
 
-	public async Task ProcessWaitRegistration(ITelegramBotClient botClient, Update update)
+	public async Task ProcessWaitRegistrationAsync(ITelegramBotClient botClient, Update update)
 	{
-		long tg_id = update.Message.From.Id;
-		string login = update.Message.From.Username;
-		if (!IsUserRegistered(tg_id))
+		var id = update.Message?.From?.Id ?? -1;
+        var login = update.Message?.From?.Username;
+        if (id == -1 || login is null)
+            return;
+
+		if (!IsUserRegistered(id))
 		{
 			var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
 			if (registration != null)
 			{
-				RegisterUser(tg_id, registration.Name, registration.Surname, login);
+				RegisterUserAsync(id, registration.Name, registration.Surname, login);
 
 				_context.WaitRegistrations.Remove(registration);
-				_context.SaveChanges();
+				await _context.SaveChangesAsync();
 
-				await botClient.SendTextMessageAsync(tg_id, "Ваш аккаунт успешно зарегистрирован!");
+				await botClient.SendTextMessageAsync(id, "Ваш аккаунт успешно зарегистрирован!");
 			}
 			else
 			{
-				await botClient.SendTextMessageAsync(tg_id, "Ваш аккаунт не зарегистрирован.");
+				await botClient.SendTextMessageAsync(id, "Ваш аккаунт не зарегистрирован.");
 			}
 		}
 	}
 
 	public async Task RegisterUserByHR(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var message = callbackQuery.Message;
-		if (message is null)
+		var id = callbackQuery.Message?.From?.Id ?? -1;
+		if (id == -1)
 			return;
-
-		var user = message.From;
-		var chat = message.Chat;
-		var text = message.Text;
-		if (user is null || text is null)
-			return;
-
-		var id = chat.Id;
-		
 		
 		_registrationData[id] = new UserData();
 
@@ -147,65 +141,57 @@ public class AuthService
 		{
 			await botClient.SendTextMessageAsync(id, "Пожалуйста, введите имя пользователя.");
 		});
-		session.Add(task, SetName);
+		session.Add(task, SetNameAsync);
 		task = new Task(async () =>
 		{
 			await botClient.SendTextMessageAsync(id, "Введите фамилию пользователя.");
 		});
-		session.Add(task, SetSurname);
+		session.Add(task, SetSurnameAsync);
 		task = new Task(async () =>
 		{
 			await botClient.SendTextMessageAsync(id, "Введите логин пользователя, без знака @.");
 		});
-		session.Add(task, SetLogin);
+		session.Add(task, SetLoginAsync);
 		await session.StartAsync();
 	}
 
-	private async Task SetName(ITelegramBotClient botClient, Message message)
+	private async Task SetNameAsync(ITelegramBotClient botClient, Message message)
 	{
-		var user = message.From;
-		var text = message.Text;
-		if (user is null || text is null)
-			return;
+        var id = message.From?.Id ?? -1;
+        var text = message.Text;
+        if (id == -1 || text is null)
+            return;
 
-		var id = user.Id;
-
-		_registrationData[id].name = text;
+		await Task.Run(() => _registrationData[id].name = text);
 	}
 	
-	private async Task SetSurname(ITelegramBotClient botClient, Message message)
+	private async Task SetSurnameAsync(ITelegramBotClient botClient, Message message)
 	{
-		var user = message.From;
-		var text = message.Text;
-		if (user is null || text is null)
-			return;
+        var id = message.From?.Id ?? -1;
+        var text = message.Text;
+        if (id == -1 || text is null)
+            return;
 
-		var id = user.Id;
-
-		_registrationData[id].surname = text;
-		
+        await Task.Run(() => _registrationData[id].surname = text);
 	}
 	
-	private async Task SetLogin(ITelegramBotClient botClient, Message message)
+	private async Task SetLoginAsync(ITelegramBotClient botClient, Message message)
 	{
-		var user = message.From;
-		var text = message.Text;
-		if (user is null || text is null)
-			return;
+        var id = message.From?.Id ?? -1;
+        var text = message.Text;
+        if (id == -1 || text is null)
+            return;
 
-		var id = user.Id;
-
-		_registrationData[id].username = text;
+        _registrationData[id].username = text;
 
 		if (_context.WaitRegistrations.Any(e => e.Login == text))
 		{
-			await botClient.SendTextMessageAsync(user.Id, "Пользователь с таким логином уже находится в листе ожидания!");
+			await botClient.SendTextMessageAsync(id, "Пользователь с таким логином уже находится в листе ожидания!");
 			_registrationData[id].Clear();
 			return;
 		}
-			 
 
-		SetWaitRegistration(_registrationData[id].username, _registrationData[id].name, _registrationData[id].surname);
+		await SetWaitRegistrationAsync(_registrationData[id].username, _registrationData[id].name, _registrationData[id].surname);
 
 		await botClient.SendTextMessageAsync(id, "Регистрация завершена!");
 		
@@ -215,7 +201,7 @@ public class AuthService
 		session?.Close();
 	}
 
-	private void RegisterUser(long userId, string name, string surname, string username)
+	private async Task RegisterUserAsync(long userId, string name, string surname, string username)
 	{
 		var user = new Employee(userId, username, name, surname);
 
@@ -225,85 +211,95 @@ public class AuthService
 		var access = new Access(userId, roleId);
 		_context.Employees.Add(user);
 		_context.Accesses.Add(access);
-		_context.SaveChanges();
+		await _context.SaveChangesAsync();
 	}
 	
-	private void SetWaitRegistration(string username, string name, string surname)
+	private async Task SetWaitRegistrationAsync(string username, string name, string surname)
 	{
 		var waitReg = new WaitRegistration(username, name, surname);
 		
 		_context.WaitRegistrations.Add(waitReg);
-		_context.SaveChanges();
+		await _context.SaveChangesAsync();
 	}
 
 	public async Task DeleteUserHandle(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var session = _responseService.CreateSession(callbackQuery.Message.Chat.Id);
+        var id = callbackQuery.Message?.From?.Id ?? -1;
+        if (id == -1)
+            return;
+
+        var session = _responseService.CreateSession(id);
 		
-		Task task;
-		task = new Task(async () =>
+		var task = new Task(async () =>
 		{
-			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Введите логин пользователя, которого хотите удалить:");
+			await botClient.SendTextMessageAsync(id, "Введите логин пользователя, которого хотите удалить:");
 		});
-		session.Add(task, DeleteUserByHR);
+		session.Add(task, DeleteUserByHrAsync);
 		await session.StartAsync();
 	}
 	
-	public async Task DeleteUserByHR(ITelegramBotClient botClient, Message message)
+	public async Task DeleteUserByHrAsync(ITelegramBotClient botClient, Message message)
 	{
-		var text = message.From;
-		if (string.IsNullOrEmpty(message.Text))
+        var id = message.From?.Id ?? -1;
+        var text = message.Text;
+        if (id == -1 || text is null)
+            return;
+
+        if (string.IsNullOrEmpty(message.Text))
 		{
-			await botClient.SendTextMessageAsync(message.Chat.Id, "Пожалуйста, укажите логин пользователя для удаления.");
-			return;
-		}
+            await botClient.SendTextMessageAsync(id, "Пожалуйста, укажите логин пользователя для удаления.");
+			return; // TODO: надо закрывать сессию (есть еще и другие места, где надо будет закрывать, лень все указывать)
+        }
 
 		var login = message.Text.Trim();
 		var user = _context.Employees.FirstOrDefault(e => e.Login == login);
 
 		if (user == null)
 		{
-			await botClient.SendTextMessageAsync(message.Chat.Id, $"Пользователь с логином {login} не найден.");
+			await botClient.SendTextMessageAsync(id, $"Пользователь с логином {login} не найден.");
 			return;
 		}
 
-		var userId = user.TelegramId;
-
-		var access = _context.Accesses.FirstOrDefault(a => a.TelegramId == userId);
+		var access = _context.Accesses.FirstOrDefault(a => a.TelegramId == user.TelegramId);
 		if (access != null)
 		{
 			_context.Accesses.Remove(access);
 		}
 
 		_context.Employees.Remove(user);
-		_context.SaveChanges();
-		var session = await _responseService.GetSessionProxyAsync(message.Chat.Id);
+		await _context.SaveChangesAsync();
+
+		var session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
 
-		await botClient.SendTextMessageAsync(message.Chat.Id, $"Пользователь с логином {login} успешно удален.");
+		await botClient.SendTextMessageAsync(id, $"Пользователь с логином {login} успешно удален.");
 	}
 	
-	public async Task GetAllUsers(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	public async Task GetAllUsersAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
+        var id = callbackQuery.Message?.From?.Id ?? -1;
+        if (id == -1)
+            return;
+
+        var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
 		var users_id = _context.Accesses.Where(e => e.PositionsId == userPosId).Select(e => e.TelegramId).ToList();
 		var users_info = _context.Employees.Where(e => users_id.Contains(e.TelegramId)).ToList();
 		
-		if (users_id.Any())
+		if (users_id.Count != 0)
 		{
-			StringBuilder sb = new StringBuilder("Список пользователей:\n");
+			var sb = new StringBuilder("Список пользователей:\n");
 			
 			foreach (var user in users_info)
 			{
 				sb.AppendLine($"{user.Login} - {user.Name} {user.Surname}");
 			}
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, sb.ToString());
+			await botClient.SendTextMessageAsync(id, sb.ToString());
 		}
 		else
 		{
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "В базе данных пока не пользователей.");
+			await botClient.SendTextMessageAsync(id, "В базе данных пока не пользователей.");
 		}
 	}
 }
