@@ -44,6 +44,13 @@ public class SurveyService
 
 			foreach (var id in ids)
 			{
+				var isExist = _context.Moods.FirstOrDefault(m => m.TelegramId == id && m.SurveyDate.Date == DateTime.UtcNow.Date);
+
+                if (isExist is not null)
+				{
+                    continue;
+                }
+
 				var task = new Task(async () =>
 				{
 					await botClient.SendTextMessageAsync(
@@ -58,7 +65,8 @@ public class SurveyService
                 await session.StartAsync();
             }
 
-			await Task.Delay(_pollingDelay);
+
+            await Task.Delay(_pollingDelay);
 		}
 	}
 

@@ -28,9 +28,9 @@ public class ApplicationContext : DbContext
 	{
 		ChangeTracker.Clear();
 	}
-	
-	// TODO: а это точно нужно?
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+
+    // TODO: а это точно нужно?
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
 		if (!optionsBuilder.IsConfigured)
 			optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BotHelper;Username=superuser;Password=QWERT1234");
