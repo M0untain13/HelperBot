@@ -158,5 +158,4 @@ public class OpenQuestionService
 			await botClient.SendTextMessageAsync(id, "У вас пока нет заданных открытых вопросов.");
 		}
 	}
-	
 }
