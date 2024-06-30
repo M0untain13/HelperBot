@@ -61,7 +61,7 @@ public class Bot
             var loginFromUser = update?.Message?.From?.Username;
             var loginFromDatabase = _context.Employees.FirstOrDefault(e => e.TelegramId == id)?.Login;
 
-            if (loginFromDatabase != loginFromUser)
+            if (loginFromDatabase is not null && loginFromDatabase != loginFromUser)
             {
                 _context.Employees.FirstOrDefault(e => e.TelegramId == id).Login = loginFromUser;
                 await _context.SaveChangesAsync();

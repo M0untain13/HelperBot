@@ -39,6 +39,9 @@ public class KeyboardService
                 ],
                 [
                     InlineKeyboardButton.WithCallbackData("Редактировать FAQ", "hr_editfaq_button")
+                ],
+                [
+                    InlineKeyboardButton.WithCallbackData("Получить список пользователей", "hr_get_all_users_button")
                 ]
             }
         );
@@ -55,6 +58,15 @@ public class KeyboardService
                 ]
              }
          );
+
+         _keyboards["moods"] = new InlineKeyboardMarkup(
+             new InlineKeyboardButton[][]
+             {
+                 [
+                     InlineKeyboardButton.WithCallbackData("Узнать полный график настроения пользователя",
+                         "hr_all_mood_button"),
+                 ]
+             });
     }
 
 	public string[] GetNames() => _keyboards.Keys.ToArray();

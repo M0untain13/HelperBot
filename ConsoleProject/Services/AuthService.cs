@@ -283,4 +283,27 @@ public class AuthService
 		await botClient.SendTextMessageAsync(message.Chat.Id, $"Пользователь с логином {login} успешно удален.");
 	}
 	
+	public async Task GetAllUsers(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+	{
+		var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
+		var users_id = _context.Accesses.Where(e => e.PositionsId == userPosId).Select(e => e.TelegramId).ToList();
+		var users_info = _context.Employees.Where(e => users_id.Contains(e.TelegramId)).ToList();
+		
+		if (users_id.Any())
+		{
+			StringBuilder sb = new StringBuilder("Список пользователей:\n");
+			
+			foreach (var user in users_info)
+			{
+				sb.AppendLine($"{user.Login} - {user.Name} {user.Surname}");
+			}
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, sb.ToString());
+		}
+		else
+		{
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "В базе данных пока не пользователей.");
+		}
+	}
 }
