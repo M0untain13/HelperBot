@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ConsoleProject.Services;
 using ConsoleProject.Services.ButtonServices;
 using ConsoleProject.Services.UpdateHandlerServices;
-using Microsoft.Extensions.Logging;
 
 namespace ConsoleProject;
 
@@ -15,7 +15,6 @@ public class Program
     /// </param>
     private static void Main(string[] args)
 	{
-		Console.WriteLine(args.Length);
 		// https://t.me/Tg0Test13_bot
 		if (args.Length != 5)
 		{
@@ -32,36 +31,39 @@ public class Program
 
 	private static IHostBuilder CreateHostBuilder(string[] args)
 	{
-		// TODO: эти переменные в будущем должны получаться из массива args
 		var databaseConnection = args[1];
 		var moodPollingDelay = Convert.ToInt32(args[2]);
 		var sessionClearDelay = Convert.ToInt32(args[3]);
 		var socketPort = Convert.ToInt32(args[4]);
 
         var loggerFactory = LoggerFactory.Create(
-			builder =>
-			{
+			builder => {
 				builder.AddConsole(
-					options =>
-					{
+					options => {
 						options.TimestampFormat = "[HH:mm:ss] ";
 					}
 				);
 			});
 
 		return Host.CreateDefaultBuilder(args).ConfigureServices(
-			(services) =>
-			{
+			(services) => {
 				services
-					.AddDbContext<ApplicationContext>(
+					.AddSingleton<MessageHandlerService>()
+                    .AddSingleton<CallbackQueryHandlerService>()
+                    .AddSingleton<HrButtonService>()
+                    .AddSingleton<FaqService>()
+                    .AddSingleton<UserButtonService>()
+                    .AddSingleton<UserService>()
+                    .AddSingleton<Bot>()
+                    .AddSingleton<KeyboardService>()
+                    .AddSingleton<OpenQuestionService>()
+                    .AddDbContext<ApplicationContext>(
 						options => options
 							.UseNpgsql(databaseConnection)
 							.UseLoggerFactory(loggerFactory)
 					)
-					.AddSingleton<UserService>()
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
                             var responseService = provider.GetRequiredService<ResponseService>();
                             var context = provider.GetRequiredService<ApplicationContext>();
                             var logger = provider.GetRequiredService<ILogger>();
@@ -69,32 +71,22 @@ public class Program
 						}
 					)
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
 							var logger = provider.GetRequiredService<ILogger>();
 							return new ResponseService(logger, sessionClearDelay);
 						}
 					)
-					.AddSingleton<MessageHandlerService>()
-					.AddSingleton<CallbackQueryHandlerService>()
-					.AddSingleton<HrButtonService>()
-					.AddSingleton<FaqService>()
-					.AddSingleton<UserButtonService>()
 					.AddSingleton(
-						provider =>
-						{
+						provider => {
 							var responseService = provider.GetRequiredService<ResponseService>();
 							var context = provider.GetRequiredService<ApplicationContext>();
 							var logger = provider.GetRequiredService<ILogger>();
 							return new SurveyService(responseService, context, logger, moodPollingDelay);
 						}
 					)
-					.AddSingleton<Bot>()
 					.AddSingleton<ILogger>(
 						_ => loggerFactory.CreateLogger<Program>()
-					)
-					.AddSingleton<KeyboardService>()
-					.AddSingleton<OpenQuestionService>();
+					);
 			}
 		);
 	}

@@ -3,10 +3,9 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using ConsoleProject.Services.UpdateHandlerServices;
 using ConsoleProject.Services;
+using ConsoleProject.Services.UpdateHandlerServices;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
 
 namespace ConsoleProject;
 
@@ -38,9 +37,7 @@ public class Bot
 		var botClient = new TelegramBotClient(token);
 		var receiverOptions = new ReceiverOptions
 		{
-			// https://core.telegram.org/bots/api#update
 			AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery],
-			// Не обрабатывать те сообщения, которые пришли, пока бот был в отключке
 			ThrowPendingUpdates = true 
 		};
 		var cancellationTokenSource = new CancellationTokenSource();
@@ -52,21 +49,14 @@ public class Bot
 		await Task.Delay(-1);
 	}
 	
-	// TODO: надо бы пробросить токен отмены дальше
 	private async Task UpdateHandlerAsync(ITelegramBotClient botClient, Update update, CancellationToken _)
 	{
 		try
 		{
-            var id = update?.Message?.From?.Id;
-            var loginFromUser = update?.Message?.From?.Username;
-            var loginFromDatabase = _context.Employees.FirstOrDefault(e => e.TelegramId == id)?.Login;
-
-            if (loginFromDatabase is not null && loginFromDatabase != loginFromUser)
+            if (CheckLogin(update))
             {
-                _context.Employees.FirstOrDefault(e => e.TelegramId == id).Login = loginFromUser;
-                await _context.SaveChangesAsync();
+				await ReplaceLoginAsync(update);
             }
-
             switch (update.Type)
 			{
 				case UpdateType.Message:
@@ -85,7 +75,32 @@ public class Bot
 		}
 	}
 
-	private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken _)
+	private bool CheckLogin(Update update)
+	{
+        var id = update?.Message?.From?.Id;
+        var loginFromUser = update?.Message?.From?.Username;
+        var userFromDataBase = _context.Employees.FirstOrDefault(e => e.TelegramId == id);
+        var loginFromDatabase = userFromDataBase?.Login;
+
+		return loginFromDatabase is not null
+				&& userFromDataBase is not null
+				&& loginFromUser is not null
+				&& loginFromDatabase != loginFromUser;
+    }
+
+    private async Task ReplaceLoginAsync(Update update)
+    {
+        var id = update?.Message?.From?.Id;
+        var loginFromUser = update?.Message?.From?.Username;
+        var userFromDataBase = _context.Employees.FirstOrDefault(e => e.TelegramId == id);
+        var loginFromDatabase = userFromDataBase?.Login;
+
+        userFromDataBase.Login = loginFromUser;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation($"Логин \"{loginFromDatabase}\" был заменен на \"{loginFromUser}\".");
+    }
+
+    private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken _)
 	{
 		var errorMessage = exception switch
 		{

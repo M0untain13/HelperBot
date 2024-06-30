@@ -1,9 +1,8 @@
 ﻿using Telegram.Bot.Types;
 using Telegram.Bot;
 using ConsoleProject.Types.Delegates;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
 using ConsoleProject.Models;
+using System.Text;
 
 namespace ConsoleProject.Services.ButtonServices;
 
@@ -39,11 +38,9 @@ public class UserButtonService : IButtonService
 
     private async Task GetFaqAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var chat = callbackQuery.Message?.Chat;
-        if (chat is null)
-            return;
-
-        var id = chat.Id;
+        var id = callbackQuery.Message?.Chat.Id;
+        if (id is null)
+            throw new NullReferenceException(nameof(id));
 
         var faqs = _context.Faqs.ToList();
         if (faqs.Count != 0)
@@ -67,13 +64,11 @@ public class UserButtonService : IButtonService
 
     private async Task AskAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var chat = callbackQuery.Message?.Chat;
-        if (chat is null)
-            return;
+        var id = callbackQuery.Message?.Chat.Id;
+        if (id is null)
+            throw new NullReferenceException(nameof(id));
 
-        var id = chat.Id;
-
-        var session = _responseService.CreateSession(id);
+        var session = _responseService.CreateSession((long)id);
 
         Task task;
         task = new Task(async () =>
@@ -87,13 +82,12 @@ public class UserButtonService : IButtonService
 
     private async Task AddOpenQuestion(ITelegramBotClient botClient, Message message)
     {
-        var user = message.From;
-        var telegramId = message.Chat.Id;
+        var telegramId = message.From?.Id;
         var text = message.Text;
-        if (user is null || text is null)
-            return;
+        if (telegramId is null || text is null)
+            throw new NullReferenceException(nameof(telegramId));
 
-         var openQuestion = new OpenQuestion(telegramId, text);
+        var openQuestion = new OpenQuestion((long)telegramId, text);
         _context.OpenQuestions.Add(openQuestion);
         await _context.SaveChangesAsync();
         var session = await _responseService.GetSessionProxyAsync(message.Chat.Id);
@@ -103,11 +97,9 @@ public class UserButtonService : IButtonService
 
     private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        var chat = callbackQuery.Message?.Chat;
-        if (chat is null)
-            return;
-
-        var id = chat.Id;
+        var id = callbackQuery.Message?.Chat.Id;
+        if (id is null)
+            throw new NullReferenceException(nameof(id));
 
         var moods = _context.Moods
             .Where(m => DateTime.UtcNow - m.SurveyDate < TimeSpan.FromDays(5) && m.TelegramId == id)
