@@ -154,10 +154,19 @@ public class FaqService
 				await session.StartAsync();
 			}
 			else
-				await botClient.SendTextMessageAsync(id, "Выбранный вопрос не найден."); // TODO: надо закрывать сессию
+			{
+                await botClient.SendTextMessageAsync(id, "Выбранный вопрос не найден.");
+                var session = await _responseService.GetSessionProxyAsync(id);
+                session?.Close();
+            }
 		}
 		else
-			await botClient.SendTextMessageAsync(id, "Введен некорректный номер.");
+		{
+            await botClient.SendTextMessageAsync(id, "Введен некорректный номер.");
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Close();
+        }
+			
 	}
 
 	private async Task HandleEditQuestionAsync(ITelegramBotClient botClient, Message message, int faqId)
@@ -200,15 +209,16 @@ public class FaqService
 				_context.Faqs.Remove(faqToDelete);
 				await _context.SaveChangesAsync();
 				_faqSelections[id].Clear();
-			}
+                transaction.Commit();
+                await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
+            }
 			else
-				await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления."); //TODO: как будто бы тут надо закрывать сессию?
-
-			transaction.Commit();
-			await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
-			var session = await _responseService.GetSessionProxyAsync(id);
-			session?.Close();
-		}
+			{
+                await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления.");
+            }
+            var session = await _responseService.GetSessionProxyAsync(id);
+            session?.Close();
+        }
 		catch (Exception ex)
 		{
 			transaction.Rollback();
@@ -278,22 +288,18 @@ public class FaqService
 				_context.Faqs.Remove(faqToDelete);
 				await _context.SaveChangesAsync();
 				await botClient.SendTextMessageAsync(id, "Вопрос был успешно удален");
-				var session = await _responseService.GetSessionProxyAsync(id);
-				session?.Close();
 				_faqSelections[id].Clear();
 			}
 			else
 			{
 				await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный вопрос для удаления.");
-				var session = await _responseService.GetSessionProxyAsync(id);
-				session?.Close();
 			}
-		}
+        }
 		else
 		{
 			await botClient.SendTextMessageAsync(id, "Введен некорректный номер.");
-			var session = await _responseService.GetSessionProxyAsync(id);
-			session?.Close();
 		}
-	}
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
+    }
 }

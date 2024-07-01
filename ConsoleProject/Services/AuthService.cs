@@ -188,15 +188,15 @@ public class AuthService
 		{
 			await botClient.SendTextMessageAsync(id, "Пользователь с таким логином уже находится в списке ожидания!");
 			_registrationData[id].Clear();
-			return;
 		}
-
-		await SetWaitRegistrationAsync(_registrationData[id].username, _registrationData[id].name, _registrationData[id].surname);
-
-		await botClient.SendTextMessageAsync(id, "Регистрация завершена!");
+		else
+		{
+            await SetWaitRegistrationAsync(_registrationData[id].username, _registrationData[id].name, _registrationData[id].surname);
+            await botClient.SendTextMessageAsync(id, "Регистрация завершена!");
+            _registrationData[id].Clear();
+            _registrationData.Remove(id);
+        }
 		
-		_registrationData[id].Clear();
-		_registrationData.Remove(id);
 		var session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
 	}
@@ -245,19 +245,17 @@ public class AuthService
         if (id == -1 || text is null)
             return;
 
-        if (string.IsNullOrEmpty(message.Text))
-		{
-            await botClient.SendTextMessageAsync(id, "Пожалуйста, укажите логин пользователя для удаления.");
-			return; // TODO: надо закрывать сессию (есть еще и другие места, где надо будет закрывать, лень все указывать)
-        }
-
-		var login = message.Text.Trim();
+		
+		var login = text.Trim();
 		var user = _context.Employees.FirstOrDefault(e => e.Login == login);
 
-		if (user == null)
+        SessionProxy? session;
+        if (user is null)
 		{
 			await botClient.SendTextMessageAsync(id, $"Пользователь с логином {login} не найден.");
-			return;
+            session = await _responseService.GetSessionProxyAsync(id);
+            session?.Close();
+            return;
 		}
 
 		var access = _context.Accesses.FirstOrDefault(a => a.TelegramId == user.TelegramId);
@@ -269,7 +267,7 @@ public class AuthService
 		_context.Employees.Remove(user);
 		await _context.SaveChangesAsync();
 
-		var session = await _responseService.GetSessionProxyAsync(id);
+		session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
 
 		await botClient.SendTextMessageAsync(id, $"Пользователь с логином {login} успешно удален.");
