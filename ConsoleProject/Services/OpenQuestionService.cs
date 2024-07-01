@@ -1,6 +1,7 @@
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ConsoleProject.Services;
 
@@ -108,23 +109,25 @@ public class OpenQuestionService
             throw new NullReferenceException(nameof(id));
 
         var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
-		
-		if (openQuestionToAnswer != null)
+
+        if (message.Text.Length > 512)
+        {
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 512 символов");
+        }
+        else if (openQuestionToAnswer != null)
 		{
 			openQuestionToAnswer.Answer = message.Text;
 			await _context.SaveChangesAsync();
 			await botClient.SendTextMessageAsync(id, "Ответ на вопрос был успешно добавлен.");
-			var session = await _responseService.GetSessionProxyAsync(id);
-			session?.Close();
 			_faqSelections[id].Clear();
 		}
 		else
 		{
 			await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный номер открытого вопроса.");
-			var session = await _responseService.GetSessionProxyAsync(id);
-			session?.Close();
 		}
-	}
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
+    }
 
 	public async Task GetAllOpenquestionsByUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{

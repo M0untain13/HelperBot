@@ -71,8 +71,16 @@ public class FaqService
 
 		_faqData[id].Answer = text;
 
-		await SaveFaqAsync(_faqData[id].Question, _faqData[id].Answer);
-		await botClient.SendTextMessageAsync(id, "Ваш вопрос и ответ успешно сохранены.");
+		if(_faqData[id].Question.Length > 256 || _faqData[id].Answer.Length > 512)
+		{
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 256 символов\nответ - макс. 512 символов");
+        }
+		else
+		{
+            await SaveFaqAsync(_faqData[id].Question, _faqData[id].Answer);
+            await botClient.SendTextMessageAsync(id, "Ваш вопрос и ответ успешно сохранены.");
+        }
+		
 		var session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
 		_faqData[id].Clear();
@@ -195,39 +203,45 @@ public class FaqService
 		if (id == -1 || text is null)
 			return;
 
-		using var transaction = _context.Database.BeginTransaction();
-
-		try
-		{
-			var newFaq = new Faq(newQuestion, text);
-			_context.Faqs.Add(newFaq);
-			await _context.SaveChangesAsync();
-
-			var faqToDelete = _context.Faqs.Find(oldFaqId);
-			if (faqToDelete != null)
-			{
-				_context.Faqs.Remove(faqToDelete);
-				await _context.SaveChangesAsync();
-				_faqSelections[id].Clear();
-                transaction.Commit();
-                await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
-            }
-			else
-			{
-                await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления.");
-            }
-            var session = await _responseService.GetSessionProxyAsync(id);
-            session?.Close();
+        if (newQuestion.Length > 256 ||text.Length > 512)
+        {
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 256 символов\nответ - макс. 512 символов");
         }
-		catch (Exception ex)
+		else
 		{
-			transaction.Rollback();
-			_logger.LogError($"Ошибка при обновлении FAQ:\n{ex.Message}");
-			await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ.");
-			var session = await _responseService.GetSessionProxyAsync(id);
-			session?.Close();
-		}
-	}
+            using var transaction = _context.Database.BeginTransaction();
+
+            try
+            {
+                var newFaq = new Faq(newQuestion, text);
+                _context.Faqs.Add(newFaq);
+                await _context.SaveChangesAsync();
+
+                var faqToDelete = _context.Faqs.Find(oldFaqId);
+                if (faqToDelete != null)
+                {
+                    _context.Faqs.Remove(faqToDelete);
+                    await _context.SaveChangesAsync();
+                    _faqSelections[id].Clear();
+                    transaction.Commit();
+                    await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления.");
+                }
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                _logger.LogError($"Ошибка при обновлении FAQ:\n{ex.Message}");
+                await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ.");
+            }
+        }
+
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
+    }
 
 	public async Task RequestDeleteFaqAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{

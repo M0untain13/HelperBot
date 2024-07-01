@@ -65,6 +65,9 @@ public class AuthService
                             {
 								try
 								{
+									if (splitData[0].Length > 64 || splitData[1].Length > 32 || splitData[2].Length > 32)
+										throw new Exception("Нарушение ограничения длины.");
+
                                     var waitReg = new WaitRegistration(splitData[0], splitData[1], splitData[2]);
                                     await _context.AddAsync(waitReg);
                                     await _context.SaveChangesAsync();
@@ -95,38 +98,50 @@ public class AuthService
 		});
 	}
 
-	public bool IsUserRegistered(long id)
-	{
-		return _context.Employees.Any(e => e.TelegramId == id);
-	}
-
-	public async Task ProcessWaitRegistrationAsync(ITelegramBotClient botClient, Update update)
-	{
-		var id = update.Message?.From?.Id ?? -1;
+    public async Task ProcessWaitRegistrationAsync(ITelegramBotClient botClient, Update update)
+    {
+        var id = update.Message?.From?.Id ?? -1;
         var login = update.Message?.From?.Username;
         if (id == -1 || login is null)
             return;
 
-		if (!IsUserRegistered(id))
-		{
-			var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
-			if (registration != null)
-			{
-				await RegisterUserAsync(id, registration.Name, registration.Surname, login);
+        if (!IsUserRegistered(id))
+        {
+            var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
+            if (registration != null)
+            {
+                await RegisterUserAsync(id, registration.Name, registration.Surname, login);
 
-				_context.WaitRegistrations.Remove(registration);
-				await _context.SaveChangesAsync();
+                _context.WaitRegistrations.Remove(registration);
+                await _context.SaveChangesAsync();
 
-				await botClient.SendTextMessageAsync(id, "Привет :)  Я рад, что ты присоединился к Simpl!");
-			}
-			else
-			{
-				await botClient.SendTextMessageAsync(id, "Ваш аккаунт не зарегистрирован.");
-			}
-		}
+                await botClient.SendTextMessageAsync(id, "Привет :)  Я рад, что ты присоединился к Simpl!");
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(id, "Ваш аккаунт не зарегистрирован.");
+            }
+        }
+    }
+
+    private async Task RegisterUserAsync(long userId, string name, string surname, string username)
+    {
+        var user = new Employee(userId, username, name, surname);
+
+        var roleId = _context.Positions.FirstOrDefault(p => p.Name == "user")?.Id
+            ?? throw new Exception("Не найдена роль \"user\" в БД.");
+
+        var access = new Access(userId, roleId);
+        _context.Employees.Add(user);
+        _context.Accesses.Add(access);
+        await _context.SaveChangesAsync();
+    }
+
+    public bool IsUserRegistered(long id)
+	{
+		return _context.Employees.Any(e => e.TelegramId == id);
 	}
-
-	public async Task RegisterUserByHR(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    public async Task RegisterUserByHR(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
 		var id = callbackQuery.Message?.Chat.Id ?? -1;
 		if (id == -1)
@@ -184,7 +199,14 @@ public class AuthService
 
         _registrationData[id].username = text;
 
-		if (_context.WaitRegistrations.Any(e => e.Login == text))
+		if (_registrationData[id].username.Length > 64 
+			|| _registrationData[id].name.Length > 32 
+			|| _registrationData[id].surname.Length > 32)
+		{
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nлогин - макс. 64 символа\nимя - макс. 32 символа\nфамилия - макс. 32 символа");
+            _registrationData[id].Clear();
+        }
+		else if (_context.WaitRegistrations.Any(e => e.Login == text))
 		{
 			await botClient.SendTextMessageAsync(id, "Пользователь с таким логином уже находится в списке ожидания!");
 			_registrationData[id].Clear();
@@ -201,19 +223,6 @@ public class AuthService
 		session?.Close();
 	}
 
-	private async Task RegisterUserAsync(long userId, string name, string surname, string username)
-	{
-		var user = new Employee(userId, username, name, surname);
-
-		var roleId = _context.Positions.FirstOrDefault(p => p.Name == "user")?.Id
-			?? throw new Exception("Не найдена роль \"user\" в БД.");
-		
-		var access = new Access(userId, roleId);
-		_context.Employees.Add(user);
-		_context.Accesses.Add(access);
-		await _context.SaveChangesAsync();
-	}
-	
 	private async Task SetWaitRegistrationAsync(string username, string name, string surname)
 	{
 		var waitReg = new WaitRegistration(username, name, surname);
@@ -242,7 +251,7 @@ public class AuthService
 	{
         var id = message.From?.Id ?? -1;
         var text = message.Text;
-        if (id == -1 || text is null)
+        if (id == -1 || text is null || text.Length > 64)
             return;
 
 		

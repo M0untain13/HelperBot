@@ -87,12 +87,20 @@ public class UserButtonService : IButtonService
         if (telegramId is null || text is null)
             throw new NullReferenceException(nameof(telegramId));
 
-        var openQuestion = new OpenQuestion((long)telegramId, text);
-        _context.OpenQuestions.Add(openQuestion);
-        await _context.SaveChangesAsync();
+        if (text.Length > 256)
+        {
+            await botClient.SendTextMessageAsync(telegramId, "Нарушение ограничения длины:\nвопрос - макс. 256 символов");
+        }
+        else
+        {
+            var openQuestion = new OpenQuestion((long)telegramId, text);
+            _context.OpenQuestions.Add(openQuestion);
+            await _context.SaveChangesAsync();
+            await botClient.SendTextMessageAsync(telegramId, "Ваш вопрос был записан.");
+        }
+        
         var session = await _responseService.GetSessionProxyAsync(message.Chat.Id);
         session?.Close();
-        await botClient.SendTextMessageAsync(telegramId, "Ваш вопрос был записан.");
     }
 
     private async Task GetMoodAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
