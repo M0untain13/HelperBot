@@ -29,7 +29,7 @@ public class OpenQuestionService
 		var openQuestions = _context.OpenQuestions.Where(e => e.Answer == null).ToList();
 		if (openQuestions.Count != 0)
 		{
-			var sb = new StringBuilder("Выберите номер вопроса на которых хотите дать ответ:\n");
+			var sb = new StringBuilder("Выберите номер вопроса, на который хотите дать ответ:\n");
 			var index = 1;
 
 			var selectionMap = new Dictionary<int, int>();

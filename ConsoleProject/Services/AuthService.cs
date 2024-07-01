@@ -112,12 +112,12 @@ public class AuthService
 			var registration = _context.WaitRegistrations.FirstOrDefault(r => r.Login == login);
 			if (registration != null)
 			{
-				RegisterUserAsync(id, registration.Name, registration.Surname, login);
+				await RegisterUserAsync(id, registration.Name, registration.Surname, login);
 
 				_context.WaitRegistrations.Remove(registration);
 				await _context.SaveChangesAsync();
 
-				await botClient.SendTextMessageAsync(id, "Ваш аккаунт успешно зарегистрирован!");
+				await botClient.SendTextMessageAsync(id, "Привет :)  Я рад, что ты присоединился к Simpl!");
 			}
 			else
 			{
@@ -186,7 +186,7 @@ public class AuthService
 
 		if (_context.WaitRegistrations.Any(e => e.Login == text))
 		{
-			await botClient.SendTextMessageAsync(id, "Пользователь с таким логином уже находится в листе ожидания!");
+			await botClient.SendTextMessageAsync(id, "Пользователь с таким логином уже находится в списке ожидания!");
 			_registrationData[id].Clear();
 			return;
 		}
@@ -232,7 +232,7 @@ public class AuthService
 		
 		var task = new Task(async () =>
 		{
-			await botClient.SendTextMessageAsync(id, "Введите логин пользователя, которого хотите удалить:");
+			await botClient.SendTextMessageAsync(id, "Введите логин пользователя, которого нужно удалить:");
 		});
 		session.Add(task, DeleteUserByHrAsync);
 		await session.StartAsync();

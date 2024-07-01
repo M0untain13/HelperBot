@@ -125,7 +125,7 @@ public class SurveyService
 		{
 			await botClient.SendTextMessageAsync(
 				id, 
-				"Введите логин пользователя, у которого хотите получить график настроения:"
+				"Введите логин пользователя, у которого нужно получить график настроения:"
 			);
 		});
 		session.Add(task, GetMoodUserByHR);

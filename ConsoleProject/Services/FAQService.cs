@@ -41,7 +41,7 @@ public class FaqService
 		task = new Task(async () =>
 		{
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(id, "Пожалуйства введите текст вопроса:");
+			await botClient.SendTextMessageAsync(id, "Пожалуйста, введите текст вопроса:");
 		});
 		session.Add(task, SetQuestionAsync);
 		task = new Task(async () =>
@@ -154,7 +154,7 @@ public class FaqService
 				await session.StartAsync();
 			}
 			else
-				await botClient.SendTextMessageAsync(id, "Выбранный FAQ не найден"); // TODO: надо закрывать сессию
+				await botClient.SendTextMessageAsync(id, "Выбранный вопрос не найден."); // TODO: надо закрывать сессию
 		}
 		else
 			await botClient.SendTextMessageAsync(id, "Введен некорректный номер.");
@@ -202,18 +202,18 @@ public class FaqService
 				_faqSelections[id].Clear();
 			}
 			else
-				await botClient.SendTextMessageAsync(id, "Старый FAQ не найден для удаления."); //TODO: как будто бы тут надо закрывать сессию?
+				await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления."); //TODO: как будто бы тут надо закрывать сессию?
 
 			transaction.Commit();
-			await botClient.SendTextMessageAsync(id, "Старый FAQ удален, новый добавлен.");
+			await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
 			var session = await _responseService.GetSessionProxyAsync(id);
 			session?.Close();
 		}
 		catch (Exception ex)
 		{
 			transaction.Rollback();
-			_logger.LogError($"Ошибка при обновлении FAQ {ex.Message}");
-			await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ");
+			_logger.LogError($"Ошибка при обновлении FAQ:\n{ex.Message}");
+			await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ.");
 			var session = await _responseService.GetSessionProxyAsync(id);
 			session?.Close();
 		}
@@ -255,7 +255,7 @@ public class FaqService
 		else
 		{
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-			await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов");
+			await botClient.SendTextMessageAsync(id, "В базе данных пока нет вопросов.");
 		}
 	}
 
@@ -277,14 +277,14 @@ public class FaqService
 			{
 				_context.Faqs.Remove(faqToDelete);
 				await _context.SaveChangesAsync();
-				await botClient.SendTextMessageAsync(id, "FAQ был успешно удален");
+				await botClient.SendTextMessageAsync(id, "Вопрос был успешно удален");
 				var session = await _responseService.GetSessionProxyAsync(id);
 				session?.Close();
 				_faqSelections[id].Clear();
 			}
 			else
 			{
-				await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный FAQ для удаления.");
+				await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный вопрос для удаления.");
 				var session = await _responseService.GetSessionProxyAsync(id);
 				session?.Close();
 			}

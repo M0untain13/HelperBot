@@ -53,7 +53,7 @@ public class MessageHandlerService
 			await _responseService.ClearSessions(id);
 			await botClient.SendTextMessageAsync(
 				id,
-				"Сессия была отчищена.\n"
+				"Сессия была очищена.\n"
 			);
 		}
 		// Ожидается ли какой-то ответ от пользователя?
@@ -79,7 +79,7 @@ public class MessageHandlerService
 					await botClient.SendTextMessageAsync(
 						id,
 						"/start или /menu - получить меню.\n" +
-						"/clear - отчистить сессию (поможет, если бот завис).\n" +
+						"/clear - очистить сессию (поможет, если бот завис).\n" +
 						"/help - получить список команд."
 					);
 					break;
