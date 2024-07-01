@@ -238,6 +238,8 @@ public class SurveyService
 			session?.Close();
 			return;
 		}
+
+		startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
 		var task = new Task(async () =>
 		{
 			await botClient.SendTextMessageAsync(id, "Введите конечную дату в формате dd-MM-yyyy");
@@ -256,7 +258,7 @@ public class SurveyService
 		var endDateText = message.Text;
 		if (id == -1 || endDateText is null)
 			return;
-
+		
 		SessionProxy? session;
 		if (!DateTime.TryParseExact(endDateText, "dd-MM-yyyy", null, DateTimeStyles.None, out var endDate))
 		{
@@ -265,9 +267,16 @@ public class SurveyService
 			session?.Close();
 			return;
 		}
-
+		
+		endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+		
+		_logger.LogInformation($"{startDate} ------- {endDate}");
+		
 		var moods = _context.Moods.Where(e =>
 			e.TelegramId == id && e.SurveyDate.Date >= startDate.Date && e.SurveyDate.Date <= endDate.Date).ToList();
+		/*var chek_moods = _context.Moods.ToList();
+		_logger.LogInformation($"--------------- {(chek_moods[0].SurveyDate < startDate ? 1 : 0)}  --------------");
+		_logger.LogInformation($"FRST {chek_moods[0].SurveyDate} FRST\nSEC {moods[0].SurveyDate} SEC");*/
 		if (moods.Count != 0)
 		{
 			var sb = new StringBuilder(
