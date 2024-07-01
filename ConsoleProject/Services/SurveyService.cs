@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -25,6 +24,8 @@ public class SurveyService
 		_pollingDelay = pollingDelay;
 		_responseService = responseService;
 		_context = context;
+		_logger = logger;
+
 	}
 
 	public async Task StartAsync(ITelegramBotClient botClient)
@@ -36,7 +37,7 @@ public class SurveyService
 			var userPosId = _context.Positions.FirstOrDefault(pos => pos.Name == "user")?.Id;
 			if (userPosId is null)
 			{
-				_logger.LogError("Not found user position in database.");
+				_logger.LogError("Not found position \"user\" in database.");
 				return;
 			}
 
@@ -44,6 +45,13 @@ public class SurveyService
 
 			foreach (var id in ids)
 			{
+				var isExist = _context.Moods.FirstOrDefault(m => m.TelegramId == id && m.SurveyDate.Date == DateTime.UtcNow.Date);
+
+				if (isExist is not null)
+				{
+					continue;
+				}
+
 				var task = new Task(async () =>
 				{
 					await botClient.SendTextMessageAsync(
@@ -51,29 +59,23 @@ public class SurveyService
 						"Оцените ваше настроение сегодня от 1 до 5."
 					);
 				});
-                var session = _responseService.CreateSession(id);
+				var session = _responseService.CreateSession(id);
 				if (session is null)
 					continue;
-                session.Add(task, SetMoodAsync);
-                await session.StartAsync();
-            }
+				session.Add(task, SetMoodAsync);
+				await session.StartAsync();
+			}
+
 
 			await Task.Delay(_pollingDelay);
 		}
 	}
 
-	// TODO: не знаю, пригодится ли этот метод, но пока оставлю
-	public void Stop()
-	{
-		_isStarted = false;
-	}
-
 	private async Task SetMoodAsync(ITelegramBotClient botClient, Message message)
 	{
-		var user = message.From;
-		var id = message.Chat.Id;
+		var id = message.From?.Id ?? -1;
 		var text = message.Text;
-		if (user is null || text is null)
+		if (id == -1 || text is null)
 			return;
 
 		if (int.TryParse(text, out var mark) && 1 <= mark && mark <= 5)
@@ -90,9 +92,9 @@ public class SurveyService
 				id,
 				"Спасибо за ответ!"
 			);
-            var session = await _responseService.GetSessionProxyAsync(id);
-            session?.Close();
-        }
+			var session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+		}
 		else
 		{
 			var task = new Task(async () =>
@@ -102,22 +104,29 @@ public class SurveyService
 					"Введите значение от 1 до 5."
 				);
 			});
-            var session = await _responseService.GetSessionProxyAsync(id);
-            session?.Add(task, SetMoodAsync);
-            if (session is null)
-                return;
-            await session.StartAsync();
-        }
+			var session = await _responseService.GetSessionProxyAsync(id);
+			if (session is null)
+				return;
+
+			session.Add(task, SetMoodAsync);
+			await session.StartAsync();
+		}
 	}
 
 	public async Task GetMoodUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var session = _responseService.CreateSession(callbackQuery.Message.Chat.Id);
-        
-		Task task;
-		task = new Task(async () =>
+        var id = callbackQuery.Message?.Chat.Id ?? -1;
+        if (id == -1)
+            return;
+
+        var session = _responseService.CreateSession(id);
+		
+		var task = new Task(async () =>
 		{
-			await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Введите логин пользователя, у которого хотите получить график настроения:");
+			await botClient.SendTextMessageAsync(
+				id, 
+				"Введите логин пользователя, у которого нужно получить график настроения:"
+			);
 		});
 		session.Add(task, GetMoodUserByHR);
 		await session.StartAsync();
@@ -125,17 +134,12 @@ public class SurveyService
 
 	private async Task GetMoodUserByHR(ITelegramBotClient botClient, Message message)
 	{
-		var chat = message.From;
-		if (chat is null)
-			return;
+        var id = message.From?.Id ?? -1;
+        var login = message.Text;
+        if (id == -1 || login is null)
+            return;
 
-		var id = chat.Id;
-
-		var login = message.Text;
-		if (login is null)
-			return;
-
-		var employee = _context.Employees.FirstOrDefault(a => a.Login == login);
+        var employee = _context.Employees.FirstOrDefault(a => a.Login == login);
 		if (employee is null)
 		{
 			await botClient.SendTextMessageAsync(id, "Пользователя с таким логином не существует.");
@@ -145,9 +149,9 @@ public class SurveyService
 		}
 		
 		var moods = _context.Moods.Where(a => a.TelegramId == employee.TelegramId).ToList();
-		if (moods.Any())
+		if (moods.Count != 0)
 		{
-			StringBuilder sb = new StringBuilder($"Список настроения пользователя - {employee.Name} {employee.Surname}\n");
+			var sb = new StringBuilder($"Список настроения пользователя - {employee.Name} {employee.Surname}\n");
 			
 			foreach (var mood in moods)
 			{

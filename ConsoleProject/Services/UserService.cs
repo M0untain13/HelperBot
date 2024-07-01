@@ -1,4 +1,3 @@
-using ConsoleProject.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConsoleProject.Services

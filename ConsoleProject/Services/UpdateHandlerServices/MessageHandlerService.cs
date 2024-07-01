@@ -42,12 +42,10 @@ public class MessageHandlerService
 		if (message is null)
 			return;
 
-		var user = message.From;
+		var id = message.From?.Id ?? -1;
 		var text = message.Text;
-		if (user is null || text is null)
+		if (id == -1 || text is null)
 			return;
-
-		var id = user.Id;
 
 		// Если необходимо отчистить сессию (например при зависании бота)
 		if(text == "/clear")
@@ -55,7 +53,7 @@ public class MessageHandlerService
 			await _responseService.ClearSessions(id);
 			await botClient.SendTextMessageAsync(
 				id,
-				"Сессия была отчищена.\n"
+				"Сессия была очищена.\n"
 			);
 		}
 		// Ожидается ли какой-то ответ от пользователя?
@@ -66,9 +64,7 @@ public class MessageHandlerService
 		// Надо ли регать юзера?
 		else if (!_authService.IsUserRegistered(id))
 		{
-			/*await botClient.SendTextMessageAsync(id,
-				"Здравствуйте, чтобы пользоваться функциями бота необходимо зарегистрироваться.");*/
-			await _authService.ProcessWaitRegistration(botClient, update);
+			await _authService.ProcessWaitRegistrationAsync(botClient, update);
 		}
 		// Иначе просто выдаем меню
 		else
@@ -83,7 +79,7 @@ public class MessageHandlerService
 					await botClient.SendTextMessageAsync(
 						id,
 						"/start или /menu - получить меню.\n" +
-						"/clear - отчистить сессию (поможет, если бот завис).\n" +
+						"/clear - очистить сессию (поможет, если бот завис).\n" +
 						"/help - получить список команд."
 					);
 					break;
@@ -95,10 +91,7 @@ public class MessageHandlerService
 					);
 					break;
 			}
-
-			_logger.LogInformation($"{user.FirstName} ({user.Id}) написал сообщение: {text}");
-
-			
+			_logger.LogInformation($"({id}) написал сообщение: {text}");
 		}
 	}
 
@@ -106,7 +99,7 @@ public class MessageHandlerService
 	{
 		var role = _userService.GetUserRole(id) ?? "";
 
-		if (!_keyboards.ContainsKey(role))
+		if (!_keyboards.TryGetValue(role, out InlineKeyboardMarkup? value))
 		{
 			_logger.LogError($"Not found keyboard for role \"{role}\".");
 			return;
@@ -115,7 +108,7 @@ public class MessageHandlerService
 		await botClient.SendTextMessageAsync(
 			id,
 			"Меню",
-			replyMarkup: _keyboards[role]
+			replyMarkup: value
 		);
 	}
 }

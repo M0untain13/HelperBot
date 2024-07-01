@@ -1,10 +1,7 @@
 using System.Text;
-using ConsoleProject.Models;
-using ConsoleProject.Types.Classes;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ConsoleProject.Services;
 
@@ -12,31 +9,29 @@ public class OpenQuestionService
 {
     private readonly ApplicationContext _context;
     private readonly ResponseService _responseService;
-    private readonly Dictionary<long, Dictionary<int, int>> _faqSelections = new();
+    private readonly Dictionary<long, Dictionary<int, int>> _faqSelections;
     
     public OpenQuestionService(
         ApplicationContext context, 
-        ResponseService responseService,
-        ILogger logger
+        ResponseService responseService
     )
     {
+        _faqSelections = new Dictionary<long, Dictionary<int, int>>();
         _context = context;
         _responseService = responseService;
     }
     
     public async Task GetAllOpenQuestions(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var chat = callbackQuery.Message?.Chat;
-		if (chat is null)
-			return;
-
-		var id = chat.Id;
+		var id = callbackQuery.Message?.Chat.Id ?? -1;
+		if (id == -1)
+			throw new NullReferenceException(nameof(id));
 
 		var openQuestions = _context.OpenQuestions.Where(e => e.Answer == null).ToList();
-		if (openQuestions.Any())
+		if (openQuestions.Count != 0)
 		{
-			StringBuilder sb = new StringBuilder("Выберите номер вопроса на которых хотите дать ответ:\n");
-			int index = 1;
+			var sb = new StringBuilder("Выберите номер вопроса, на который хотите дать ответ:\n");
+			var index = 1;
 
 			var selectionMap = new Dictionary<int, int>();
 			_faqSelections[id] = selectionMap;
@@ -49,11 +44,11 @@ public class OpenQuestionService
 				index++;
 			}
 
-			Task task = new Task(async () =>
-			{
-				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-				await botClient.SendTextMessageAsync(id, sb.ToString());
-			});
+            var task = new Task(async () =>
+            {
+                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+                await botClient.SendTextMessageAsync(id, sb.ToString());
+            });
             var session = _responseService.CreateSession(id);
 
             session.Add(task, SelectNumberQuestionToGiveAnswer);
@@ -68,74 +63,82 @@ public class OpenQuestionService
 
 	private async Task SelectNumberQuestionToGiveAnswer(ITelegramBotClient botClient, Message message)
 	{
-		var chatId = message.Chat.Id;
-		if (int.TryParse(message.Text, out int index) && _faqSelections.ContainsKey(chatId) &&
-			_faqSelections[chatId].ContainsKey(index))
+		var id = message.From?.Id ?? -1;
+		if(id == -1)
+            throw new NullReferenceException(nameof(id));
+
+        if (int.TryParse(message.Text, out int index) 
+			&& _faqSelections.ContainsKey(id) 
+			&& _faqSelections[id].ContainsKey(index))
 		{
-			int openQuestionId = _faqSelections[chatId][index];
+			int openQuestionId = _faqSelections[id][index];
 			var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
 
 			if (openQuestionToAnswer != null)
 			{
-				Task task = new Task(async () =>
+				var task = new Task(async () =>
 				{
-					await botClient.SendTextMessageAsync(chatId, "Введите ответ на вопрос:");
+					await botClient.SendTextMessageAsync(id, "Введите ответ на вопрос:");
 				});
-				var session = await _responseService.GetSessionProxyAsync(chatId);
+				var session = await _responseService.GetSessionProxyAsync(id);
+				if (session is null)
+					return;
 
-				session.Add(task,  (botClient, message) => GiveAnswerForOpenQuestion(botClient, message, openQuestionId));
+                session.Add(task,  (botClient, message) => GiveAnswerForOpenQuestion(botClient, message, openQuestionId));
 				await session.StartAsync();
 			}
 			else
 			{
-				await botClient.SendTextMessageAsync(chatId, "Не удалось найти выбранный номер открытого вопроса на удаление");
-				var session = await _responseService.GetSessionProxyAsync(chatId);
+				await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный номер открытого вопроса на удаление");
+				var session = await _responseService.GetSessionProxyAsync(id);
 				session?.Close();
 			}
 		}
 		else
 		{
-			await botClient.SendTextMessageAsync(chatId, "Введен некорректный номер");
-			var session = await _responseService.GetSessionProxyAsync(chatId);
+			await botClient.SendTextMessageAsync(id, "Введен некорректный номер");
+			var session = await _responseService.GetSessionProxyAsync(id);
 			session?.Close();
 		}
 	}
     
 	private async Task GiveAnswerForOpenQuestion(ITelegramBotClient botClient, Message message, int openQuestionId)
 	{
-		var chatId = message.Chat.Id;
-		var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
-		
-		if (openQuestionToAnswer != null)
+		var id = message.From?.Id ?? -1;
+		if(id == -1)
+            throw new NullReferenceException(nameof(id));
+
+        var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
+
+        if (message.Text.Length > 512)
+        {
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 512 символов");
+        }
+        else if (openQuestionToAnswer != null)
 		{
 			openQuestionToAnswer.Answer = message.Text;
 			await _context.SaveChangesAsync();
-			await botClient.SendTextMessageAsync(chatId, "Ответ на вопрос был успешно добавлен.");
-			var session = await _responseService.GetSessionProxyAsync(chatId);
-			session?.Close();
-			_context.ChangeTracker.Clear();
-			_faqSelections[chatId].Clear();
+			await botClient.SendTextMessageAsync(id, "Ответ на вопрос был успешно добавлен.");
+			_faqSelections[id].Clear();
 		}
 		else
 		{
-			await botClient.SendTextMessageAsync(chatId, "Не удалось найти выбранный номер открытого вопроса.");
-			var session = await _responseService.GetSessionProxyAsync(chatId);
-			session?.Close();
+			await botClient.SendTextMessageAsync(id, "Не удалось найти выбранный номер открытого вопроса.");
 		}
-	}
+        var session = await _responseService.GetSessionProxyAsync(id);
+        session?.Close();
+    }
 
 	public async Task GetAllOpenquestionsByUser(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 	{
-		var chat = callbackQuery.Message?.Chat;
-		if (chat is null)
-			return;
+		var id = callbackQuery.Message?.Chat.Id ?? -1;
+		if (id == -1)
+            throw new NullReferenceException(nameof(id));
 
-		var id = chat.Id;
-
-		var openQuestions = _context.OpenQuestions.Where(e => e.TelegramId == id).ToList();
-		if (openQuestions.Any())
+        var openQuestions = _context.OpenQuestions.Where(e => e.TelegramId == id).ToList();
+		if (openQuestions.Count != 0)
 		{
-			StringBuilder sb = new StringBuilder("Ваши открытые ворпосы:\n");
+			var sb = new StringBuilder("Ваши открытые ворпосы:\n");
 			int index = 1;
 
 			var selectionMap = new Dictionary<int, int>();
@@ -158,5 +161,4 @@ public class OpenQuestionService
 			await botClient.SendTextMessageAsync(id, "У вас пока нет заданных открытых вопросов.");
 		}
 	}
-	
 }
