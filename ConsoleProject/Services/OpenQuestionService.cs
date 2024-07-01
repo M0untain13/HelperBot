@@ -116,9 +116,9 @@ public class OpenQuestionService
 
         var openQuestionToAnswer = _context.OpenQuestions.FirstOrDefault(e => e.Id == openQuestionId);
 
-        if (message.Text.Length > 512)
+        if (message.Text.Length > 4000)
         {
-            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 512 символов");
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 4000 символов");
         }
         else if (openQuestionToAnswer != null)
 		{
