@@ -42,3 +42,5 @@ create table wait_registration(
 	name varchar(32) not null,
 	surname varchar(32) not null
 );
+
+insert into positions (id, name) values (1, 'user'), (2, 'hr');
