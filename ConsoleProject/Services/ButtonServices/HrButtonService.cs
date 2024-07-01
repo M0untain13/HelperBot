@@ -33,6 +33,7 @@ public class HrButtonService : IButtonService
         
         _handlers["hr_mood_button"]    = GetMoodUser;
         _handlers["hr_all_mood_button"] = surveyService.GetMoodUser;
+        _handlers["hr_all_mood_period_button"] = surveyService.GetMoodUserDate;
 
         _keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
         var names = new string[] { "hr", "edit_faq", "moods" };

@@ -28,9 +28,13 @@ public class OpenQuestionService
 			throw new NullReferenceException(nameof(id));
 
 		var openQuestions = _context.OpenQuestions.Where(e => e.Answer == null).ToList();
+
 		if (openQuestions.Count != 0)
 		{
-			var sb = new StringBuilder("Выберите номер вопроса, на который хотите дать ответ:\n");
+			var openQuestionsUserId = _context.OpenQuestions.Where(e => e.Answer == null).Select(e => e.TelegramId).ToList();;
+			var users_id = _context.Employees.Where(e => openQuestionsUserId.Contains(e.TelegramId)).ToList();
+			
+			var sb = new StringBuilder("Выберите номер вопроса, на который хотите дать ответ:\n\n");
 			var index = 1;
 
 			var selectionMap = new Dictionary<int, int>();
@@ -38,6 +42,8 @@ public class OpenQuestionService
 
 			foreach (var openQuestion in openQuestions)
 			{
+				var info = _context.Employees.FirstOrDefault(e => e.TelegramId == openQuestion.TelegramId);
+				sb.AppendLine($"Вопрос от пользователя - {info.Name} {info.Surname}");
 				sb.AppendLine($"{index} - Вопрос: {openQuestion.Question}\n   Ответ: {openQuestion.Answer}");
 				sb.AppendLine();
 				selectionMap[index] = openQuestion.Id;
@@ -138,7 +144,7 @@ public class OpenQuestionService
         var openQuestions = _context.OpenQuestions.Where(e => e.TelegramId == id).ToList();
 		if (openQuestions.Count != 0)
 		{
-			var sb = new StringBuilder("Ваши открытые ворпосы:\n");
+			var sb = new StringBuilder("Ваши открытые вопросы:\n");
 			int index = 1;
 
 			var selectionMap = new Dictionary<int, int>();

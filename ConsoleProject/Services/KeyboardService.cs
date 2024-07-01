@@ -65,6 +65,9 @@ public class KeyboardService
                  [
                      InlineKeyboardButton.WithCallbackData("Узнать полный график настроения пользователя",
                          "hr_all_mood_button"),
+                 ],
+                 [
+                     InlineKeyboardButton.WithCallbackData("Узнать настроение за конкретный период", "hr_all_mood_period_button")
                  ]
              });
     }
