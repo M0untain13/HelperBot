@@ -45,15 +45,11 @@ public class UserButtonService : IButtonService
         var faqs = _context.Faqs.ToList();
         if (faqs.Count != 0)
         {
-            var sb = new StringBuilder("FAQ:\n");
-
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             foreach (var faq in faqs)
             {
-                sb.AppendLine($"\nQ: {faq.Question}\nA: {faq.Answer}\n");
+                await botClient.SendTextMessageAsync(id, $"\nQ: {faq.Question}\nA: {faq.Answer}\n");
             }
-
-            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
-            await botClient.SendTextMessageAsync(id, sb.ToString());
         }
         else
         {

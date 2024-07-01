@@ -71,9 +71,9 @@ public class FaqService
 
 		_faqData[id].Answer = text;
 
-		if(_faqData[id].Question.Length > 256 || _faqData[id].Answer.Length > 512)
+		if(_faqData[id].Question.Length > 4000 || _faqData[id].Answer.Length > 4000)
 		{
-            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 256 символов\nответ - макс. 512 символов");
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 4000 символов\nответ - макс. 4000 символов");
         }
 		else
 		{
@@ -108,14 +108,14 @@ public class FaqService
 			
 			var selectionMap = new Dictionary<int, int>();
 			_faqSelections[id] = selectionMap;
-			
-			foreach (var faq in faqs)
-			{
-				sb.AppendLine($"{index} - Вопрос: {faq.Question}\n Ответ: {faq.Answer}\n");
+
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+            foreach (var faq in faqs)
+            {
+                await botClient.SendTextMessageAsync(id, $"{index} - Вопрос: {faq.Question}\n Ответ: {faq.Answer}\n");
 				selectionMap[index] = faq.Id;
-				sb.AppendLine();
 				index++;
-			}
+            }
 
 			var session = _responseService.CreateSession(id);
 
@@ -203,9 +203,9 @@ public class FaqService
 		if (id == -1 || text is null)
 			return;
 
-        if (newQuestion.Length > 256 ||text.Length > 512)
+        if (newQuestion.Length > 4000 ||text.Length > 4000)
         {
-            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 256 символов\nответ - макс. 512 символов");
+            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 4000 символов\nответ - макс. 4000Ы символов");
         }
 		else
 		{
@@ -252,20 +252,20 @@ public class FaqService
 		var faqs = _context.Faqs.ToList();
 		if (faqs.Count != 0)
 		{
-			var sb = new StringBuilder("Выбреите номер вопроса для удаления:\n");
+			var sb = new StringBuilder("Выберите номер вопроса для удаления:\n");
 			var index = 1;
 
 			var selectionMap = new Dictionary<int, int>();
 			_faqSelections[id] = selectionMap;
 
-			foreach (var faq in faqs)
-			{
-				sb.AppendLine($"{index} - Вопрос: {faq.Question}\n   Ответ: {faq.Answer}");
-				sb.AppendLine();
+			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
+            foreach (var faq in faqs)
+            {
+                await botClient.SendTextMessageAsync(id, $"{index} - Вопрос: {faq.Question}\n Ответ: {faq.Answer}\n");
 				selectionMap[index] = faq.Id;
 				index++;
-			}
-
+            }
+			
 			var task = new Task(async () =>
 			{
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
