@@ -31,9 +31,6 @@ create table accesses(
 	foreign key (position_id) references positions(id)
 );
 
-insert into employees values (841493868, 'kart0sh', 'Никита', 'Вершинин');
-insert into accesses values (841493868, 2);
-
 create table open_questions(
 	question_id serial not null,
 	user_telegram_id bigint not null,
