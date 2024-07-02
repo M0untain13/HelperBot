@@ -81,7 +81,7 @@ public class Session : IDisposable
             return false;
         }
 
-        if (_tasks.Count > 0)
+        if (_tasks.Count > 0 && State != SessionState.Close)
 		{
             await InvokeTaskAsync();
         }
@@ -133,3 +133,4 @@ public class Session : IDisposable
 		GC.SuppressFinalize(this);
 	}
 }
+

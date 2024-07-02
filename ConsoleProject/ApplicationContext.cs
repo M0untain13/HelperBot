@@ -19,6 +19,6 @@ public class ApplicationContext : DbContext
     {
 		base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<Mood>().HasKey(m => new { m.TelegramId, m.SurveyDate });
-        modelBuilder.Entity<OpenQuestion>().HasKey(oq => new { oq.Id, oq.TelegramId });
+        modelBuilder.Entity<OpenQuestion>().HasKey(oq => new { oq.Id, oq.UserTelegramId, oq.HrTelegramId });
     }
 }

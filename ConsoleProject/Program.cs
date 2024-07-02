@@ -67,7 +67,8 @@ public class Program
                             var responseService = provider.GetRequiredService<ResponseService>();
                             var context = provider.GetRequiredService<ApplicationContext>();
                             var logger = provider.GetRequiredService<ILogger>();
-                            return new AuthService(context, responseService, logger, socketPort);
+                            var keyboardService = provider.GetRequiredService<KeyboardService>();
+                            return new AuthService(context, responseService, logger, keyboardService, socketPort);
 						}
 					)
 					.AddSingleton(

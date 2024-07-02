@@ -14,17 +14,20 @@ public class AuthService
 	private readonly ApplicationContext _context;
 	private readonly ResponseService _responseService;
 	private readonly Dictionary<long, UserData> _registrationData;
+	private readonly KeyboardService _keyboardService;
 	
 	public AuthService(
 		ApplicationContext context, 
 		ResponseService responseService, 
 		ILogger logger,
+		KeyboardService keyboardService,
 		int socketPort
 		)
 	{
 		_context = context;
 		_responseService = responseService;
 		_registrationData = new Dictionary<long, UserData>();
+		_keyboardService = keyboardService;
 
 		Task.Run(async () =>
 		{
@@ -115,7 +118,8 @@ public class AuthService
                 _context.WaitRegistrations.Remove(registration);
                 await _context.SaveChangesAsync();
 
-                await botClient.SendTextMessageAsync(id, "Привет :)  Я рад, что ты присоединился к Simpl!");
+                await botClient.SendTextMessageAsync(id, "Привет :)  Я рад, что ты присоединился к Simpl!", 
+	                replyMarkup: _keyboardService.GetReplyKeyboard("menu"));
             }
             else
             {
@@ -275,6 +279,8 @@ public class AuthService
 
 		_context.Employees.Remove(user);
 		await _context.SaveChangesAsync();
+
+		await _responseService.ClearSessions(user.TelegramId);
 
 		session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
