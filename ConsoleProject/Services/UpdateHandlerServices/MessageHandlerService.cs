@@ -13,7 +13,8 @@ public class MessageHandlerService
 	private readonly UserService _userService;
 	private readonly AuthService _authService;
 	private readonly ResponseService _responseService;
-	private readonly Dictionary<string, InlineKeyboardMarkup?> _keyboards;
+	private readonly Dictionary<string, InlineKeyboardMarkup?> _inlineKeyboard;
+	private readonly Dictionary<string, ReplyKeyboardMarkup?> _replyKeyboards;
 
 	public MessageHandlerService(
 		UserService userService, 
@@ -28,12 +29,15 @@ public class MessageHandlerService
 		_authService = authService;
 		_responseService = responseService;
 
-		_keyboards = new Dictionary<string, InlineKeyboardMarkup?>();
+		_inlineKeyboard = new Dictionary<string, InlineKeyboardMarkup?>();
+		_replyKeyboards = new Dictionary<string, ReplyKeyboardMarkup>();
 		var names = new string[] { "user", "hr" };
 		foreach(var name in names)
 		{
-			_keyboards[name] = keyboardService.GetKeyboard(name);
+			_inlineKeyboard[name] = keyboardService.GetInlineKeyboard(name);
 		}
+
+		_replyKeyboards["menu"] = keyboardService.GetReplyKeyboard("menu");
 	}
 
 	public async Task HandleAsync(ITelegramBotClient botClient, Update update)
@@ -87,7 +91,7 @@ public class MessageHandlerService
 					await botClient.SendTextMessageAsync(
 						id,
 						"На данный момент ответ не ожидается.\n"+
-						"Если Вам нужен список команд, введите \"/help\"."
+						"Если Вам нужен список команд, введите \"/help\".", replyMarkup: _replyKeyboards["menu"]
 					);
 					break;
 			}
@@ -99,7 +103,7 @@ public class MessageHandlerService
 	{
 		var role = _userService.GetUserRole(id) ?? "";
 
-		if (!_keyboards.TryGetValue(role, out InlineKeyboardMarkup? value))
+		if (!_inlineKeyboard.TryGetValue(role, out InlineKeyboardMarkup? value))
 		{
 			_logger.LogError($"Not found keyboard for role \"{role}\".");
 			return;

@@ -5,14 +5,16 @@ namespace ConsoleProject.Services;
 
 public class KeyboardService
 {
-	private readonly Dictionary<string, InlineKeyboardMarkup> _keyboards;
+	private readonly Dictionary<string, InlineKeyboardMarkup> _inlineKeyboards;
+    private readonly Dictionary<string, ReplyKeyboardMarkup> _replyKeyboards;
 	private readonly ILogger _logger;
 
 	public KeyboardService(ILogger logger)
 	{
 		_logger = logger;
-        _keyboards = new Dictionary<string, InlineKeyboardMarkup>();
-        _keyboards["user"] = new InlineKeyboardMarkup(
+        _inlineKeyboards = new Dictionary<string, InlineKeyboardMarkup>();
+        _replyKeyboards = new Dictionary<string, ReplyKeyboardMarkup>();
+        _inlineKeyboards["user"] = new InlineKeyboardMarkup(
             new InlineKeyboardButton[][]
             {
                 [
@@ -27,7 +29,7 @@ public class KeyboardService
                 
             }
         );
-        _keyboards["hr"] = new InlineKeyboardMarkup(
+        _inlineKeyboards["hr"] = new InlineKeyboardMarkup(
             new InlineKeyboardButton[][]{
                 [
                     InlineKeyboardButton.WithCallbackData("Добавить пользователя", "hr_adduser_button"),
@@ -45,7 +47,7 @@ public class KeyboardService
                 ]
             }
         );
-        _keyboards["edit_faq"] = new InlineKeyboardMarkup(
+        _inlineKeyboards["edit_faq"] = new InlineKeyboardMarkup(
              new InlineKeyboardButton[][]
              {
                 [
@@ -59,7 +61,7 @@ public class KeyboardService
              }
          );
 
-         _keyboards["moods"] = new InlineKeyboardMarkup(
+         _inlineKeyboards["moods"] = new InlineKeyboardMarkup(
              new InlineKeyboardButton[][]
              {
                  [
@@ -70,11 +72,26 @@ public class KeyboardService
                      InlineKeyboardButton.WithCallbackData("Узнать настроение за конкретный период", "hr_all_mood_period_button")
                  ]
              });
+
+         _replyKeyboards["menu"] = new ReplyKeyboardMarkup(
+             new KeyboardButton[][]
+             {
+                 [
+                     new KeyboardButton("/menu"),
+                 ],
+                 [
+                     new KeyboardButton("/help"),
+                 ],
+                 [
+                     new KeyboardButton("/clear"),
+                 ],
+             }
+         );
     }
 
-	public string[] GetNames() => _keyboards.Keys.ToArray();
+	public string[] GetNames() => _inlineKeyboards.Keys.ToArray();
 
-	public InlineKeyboardMarkup? GetKeyboard(string name)
+	public InlineKeyboardMarkup? GetInlineKeyboard(string name)
 	{
 		if (!GetNames().Contains(name))
 		{
@@ -82,6 +99,17 @@ public class KeyboardService
 			return null;
 		}
 
-		return _keyboards[name];
+		return _inlineKeyboards[name];
 	}
+    
+    public ReplyKeyboardMarkup? GetReplyKeyboard(string name)
+    {
+        if (!_replyKeyboards.Keys.Contains(name))
+        {
+            _logger.LogError($"Keyboard \"{name}\" does not exist.");
+            return null;
+        }
+
+        return _replyKeyboards[name];
+    }
 }

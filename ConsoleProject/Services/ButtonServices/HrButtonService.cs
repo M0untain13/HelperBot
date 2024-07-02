@@ -39,7 +39,7 @@ public class HrButtonService : IButtonService
         var names = new string[] { "hr", "edit_faq", "moods" };
         foreach (var name in names)
         {
-            _keyboards[name] = keyboardService.GetKeyboard(name);
+            _keyboards[name] = keyboardService.GetInlineKeyboard(name);
         }
     }
 

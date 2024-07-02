@@ -83,9 +83,9 @@ public class UserButtonService : IButtonService
         if (telegramId is null || text is null)
             throw new NullReferenceException(nameof(telegramId));
 
-        if (text.Length > 256)
+        if (text.Length > 1024)
         {
-            await botClient.SendTextMessageAsync(telegramId, "Нарушение ограничения длины:\nвопрос - макс. 256 символов");
+            await botClient.SendTextMessageAsync(telegramId, "Нарушение ограничения длины:\nвопрос - макс. 1024 символов");
         }
         else
         {

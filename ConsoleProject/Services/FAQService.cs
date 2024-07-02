@@ -58,6 +58,14 @@ public class FaqService
 		var text = message.Text;
 		if (id == -1 || text is null)
 			return;
+		
+		if(text.Length > 1024)
+		{
+			await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 1024 символов");
+			var session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+			return;
+		}
 
 		await Task.Run(() => _faqData[id].Question = text);
 	}
@@ -69,19 +77,20 @@ public class FaqService
 		if (id == -1 || text is null)
 			return;
 
-		_faqData[id].Answer = text;
+		SessionProxy? session;
+		if(text.Length > 1024)
+		{
+			await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 1024 символов");
+			session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+			return;
+		}
 
-		if(_faqData[id].Question.Length > 4000 || _faqData[id].Answer.Length > 4000)
-		{
-            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 4000 символов\nответ - макс. 4000 символов");
-        }
-		else
-		{
-            await SaveFaqAsync(_faqData[id].Question, _faqData[id].Answer);
-            await botClient.SendTextMessageAsync(id, "Ваш вопрос и ответ успешно сохранены.");
-        }
+		_faqData[id].Answer = text;
+        await SaveFaqAsync(_faqData[id].Question, _faqData[id].Answer);
+        await botClient.SendTextMessageAsync(id, "Ваш вопрос и ответ успешно сохранены.");
 		
-		var session = await _responseService.GetSessionProxyAsync(id);
+		session = await _responseService.GetSessionProxyAsync(id);
 		session?.Close();
 		_faqData[id].Clear();
 		_faqData.Remove(id);
@@ -112,7 +121,7 @@ public class FaqService
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             foreach (var faq in faqs)
             {
-                await botClient.SendTextMessageAsync(id, $"{index} - Вопрос: {faq.Question}\n Ответ: {faq.Answer}\n");
+                await botClient.SendTextMessageAsync(id, $"Вопрос №{index}: {faq.Question}\nОтвет к вопросу №{index}: {faq.Answer}\n");
 				selectionMap[index] = faq.Id;
 				index++;
             }
@@ -152,7 +161,7 @@ public class FaqService
 				var task = new Task(async () =>
 				{
 					await botClient.SendTextMessageAsync(id,
-					$"Текущий вопрос: {faq.Question}\n Текущий ответ: {faq.Answer}\n Введите новый вопрос:");
+					$"Текущий вопрос: {faq.Question}\nТекущий ответ: {faq.Answer}\nВведите новый вопрос:");
 				});
 				var session = await _responseService.GetSessionProxyAsync(id);
 				if (session is null)
@@ -184,11 +193,20 @@ public class FaqService
 		if (id == -1 || text is null)
 			return;
 
+		SessionProxy? session;
+		if (text.Length > 1024)
+		{
+			await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 1024 символов");
+			session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+			return;
+		}
+
 		var task = new Task(async () =>
 		{
 			await botClient.SendTextMessageAsync(id, "Введите новый ответ:");
 		});
-		var session = await _responseService.GetSessionProxyAsync(id);
+		session = await _responseService.GetSessionProxyAsync(id);
 		if (session is null)
 			return;
 
@@ -202,44 +220,46 @@ public class FaqService
 		var text = message.Text;
 		if (id == -1 || text is null)
 			return;
-
-        if (newQuestion.Length > 4000 ||text.Length > 4000)
-        {
-            await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nвопрос - макс. 4000 символов\nответ - макс. 4000Ы символов");
-        }
-		else
+		
+		SessionProxy? session;
+		if (text.Length > 1024)
 		{
-            using var transaction = _context.Database.BeginTransaction();
+			await botClient.SendTextMessageAsync(id, "Нарушение ограничения длины:\nответ - макс. 1024 символов");
+			session = await _responseService.GetSessionProxyAsync(id);
+			session?.Close();
+			return;
+		}
+		
+        using var transaction = _context.Database.BeginTransaction();
 
-            try
+        try
+        {
+            var newFaq = new Faq(newQuestion, text);
+            _context.Faqs.Add(newFaq);
+            await _context.SaveChangesAsync();
+
+            var faqToDelete = _context.Faqs.Find(oldFaqId);
+            if (faqToDelete != null)
             {
-                var newFaq = new Faq(newQuestion, text);
-                _context.Faqs.Add(newFaq);
+                _context.Faqs.Remove(faqToDelete);
                 await _context.SaveChangesAsync();
-
-                var faqToDelete = _context.Faqs.Find(oldFaqId);
-                if (faqToDelete != null)
-                {
-                    _context.Faqs.Remove(faqToDelete);
-                    await _context.SaveChangesAsync();
-                    _faqSelections[id].Clear();
-                    transaction.Commit();
-                    await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления.");
-                }
+                _faqSelections[id].Clear();
+                transaction.Commit();
+                await botClient.SendTextMessageAsync(id, "Старый вопрос удален, новый добавлен.");
             }
-            catch (Exception ex)
+            else
             {
-                transaction.Rollback();
-                _logger.LogError($"Ошибка при обновлении FAQ:\n{ex.Message}");
-                await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ.");
+                await botClient.SendTextMessageAsync(id, "Старый вопрос не найден для удаления.");
             }
         }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            _logger.LogError($"Ошибка при обновлении FAQ:\n{ex.Message}");
+            await botClient.SendTextMessageAsync(id, "Произошла ошибка при обновлении FAQ.");
+        }
 
-        var session = await _responseService.GetSessionProxyAsync(id);
+        session = await _responseService.GetSessionProxyAsync(id);
         session?.Close();
     }
 
@@ -261,7 +281,7 @@ public class FaqService
 			await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
             foreach (var faq in faqs)
             {
-                await botClient.SendTextMessageAsync(id, $"{index} - Вопрос: {faq.Question}\n Ответ: {faq.Answer}\n");
+                await botClient.SendTextMessageAsync(id, $"Вопрос №{index}: {faq.Question}\nОтвет к вопроу №{index}: {faq.Answer}\n");
 				selectionMap[index] = faq.Id;
 				index++;
             }

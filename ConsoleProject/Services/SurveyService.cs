@@ -196,11 +196,11 @@ public class SurveyService
 	private async Task GetMoodUserDateByHR(ITelegramBotClient botClient, Message message)
 	{
 		var id = message.From?.Id ?? -1;
-		var login = message.Text;
-		if (id == -1 || login is null)
+		var user_login = message.Text;
+		if (id == -1 || user_login is null)
 			return;
 
-		var employee = _context.Employees.FirstOrDefault(a => a.Login == login);
+		var employee = _context.Employees.FirstOrDefault(a => a.Login == user_login);
 		SessionProxy? session;
 		if (employee is null)
 		{
@@ -218,11 +218,11 @@ public class SurveyService
 		if (session is null)
 			return;
 
-		session.Add(task,  (botClient, message) => GetMoodUserStartDateAsync(botClient, message));
+		session.Add(task,  (botClient, message) => GetMoodUserStartDateAsync(botClient, message, user_login));
 		await session.StartAsync();
 	}
 
-	private async Task GetMoodUserStartDateAsync(ITelegramBotClient botClient, Message message)
+	private async Task GetMoodUserStartDateAsync(ITelegramBotClient botClient, Message message, string user_login)
 	{
 		var id = message.From?.Id ?? -1;
 		var startDateText = message.Text;
@@ -248,11 +248,11 @@ public class SurveyService
 		if (session is null)
 			return;
 
-		session.Add(task,  (botClient, message) => GetMoodUserEndDateAsync(botClient, message, startDate));
+		session.Add(task,  (botClient, message) => GetMoodUserEndDateAsync(botClient, message, startDate, user_login));
 		await session.StartAsync();
 	}
 
-	private async Task GetMoodUserEndDateAsync(ITelegramBotClient botClient, Message message, DateTime startDate)
+	private async Task GetMoodUserEndDateAsync(ITelegramBotClient botClient, Message message, DateTime startDate, string user_login)
 	{
 		var id = message.From?.Id ?? -1;
 		var endDateText = message.Text;
@@ -269,18 +269,16 @@ public class SurveyService
 		}
 		
 		endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
-		
-		_logger.LogInformation($"{startDate} ------- {endDate}");
+
+		var user_id = _context.Employees.FirstOrDefault(e => e.Login == user_login);
 		
 		var moods = _context.Moods.Where(e =>
-			e.TelegramId == id && e.SurveyDate.Date >= startDate.Date && e.SurveyDate.Date <= endDate.Date).ToList();
-		/*var chek_moods = _context.Moods.ToList();
-		_logger.LogInformation($"--------------- {(chek_moods[0].SurveyDate < startDate ? 1 : 0)}  --------------");
-		_logger.LogInformation($"FRST {chek_moods[0].SurveyDate} FRST\nSEC {moods[0].SurveyDate} SEC");*/
+			e.TelegramId == user_id.TelegramId && e.SurveyDate.Date >= startDate.Date && e.SurveyDate.Date <= endDate.Date).ToList();
+
 		if (moods.Count != 0)
 		{
 			var sb = new StringBuilder(
-				$"Список настроения пользователя за период с {startDate.ToShortDateString()} по {endDate.ToShortDateString()}\n");
+				$"Список настроения пользователя - {user_id.Name} {user_id.Surname}, за период с {startDate.ToShortDateString()} по {endDate.ToShortDateString()}\n\n");
 
 			foreach (var mood in moods)
 			{
