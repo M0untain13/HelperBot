@@ -6,26 +6,30 @@ namespace ConsoleProject.Models;
 [Table("open_questions")]
 public class OpenQuestion
 {
-    public OpenQuestion(long telegramId, string question, string? answer = null)
+    public OpenQuestion(long userTelegramId, long hrTelegramId, string question, string? answer = null)
     {
-        TelegramId = telegramId;
+        UserTelegramId = userTelegramId;
+        HrTelegramId = hrTelegramId;
         Question = question;
         Answer = answer;
     }
 
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    [Column("id")]
+    [Column("question_id")]
     public int Id { get; set; }
 
-    [Column("telegram_id")]
-    public long TelegramId { get; set; }
+    [Column("user_telegram_id")]
+    public long UserTelegramId { get; set; }
+    
+    [Column("hr_telegram_id")]
+    public long HrTelegramId { get; set; }
     
     [Required]
-    [MaxLength(256)]
+    [MaxLength(1024)]
     [Column("question")]
     public string Question { get; set; }
     
-    [MaxLength(512)]
+    [MaxLength(1024)]
     [Column("answer")]
     public string? Answer { get; set; }
 }
