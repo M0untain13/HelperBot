@@ -1,0 +1,36 @@
+services:
+
+  bot_db:
+    container_name: ${DATABASE_HOST}
+    build: ./Database
+    command:
+      - 'postgres'
+      - '-c'
+      - 'port=${DATABASE_PORT}'
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - database_volume:/var/lib/postgresql/data
+    networks:
+      - server_net
+
+  bot:
+    container_name: ${BOT_HOST}
+    build: ./ConsoleProject
+    env_file:
+      - .env
+    depends_on:
+      - bot_db
+    ports:
+      - "${BOT_PORT}:${BOT_PORT}"
+    networks:
+      - server_net
+
+volumes:
+  database_volume: {}
+
+networks:
+  server_net:
+    driver: bridge

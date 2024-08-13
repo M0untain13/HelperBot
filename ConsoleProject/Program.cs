@@ -10,31 +10,26 @@ namespace ConsoleProject;
 
 public class Program
 {
-    /// <param name="args">
-    /// Args: token, dbConnection, moodPollingDelay, sessionClearDelay, socketPort
-    /// </param>
     private static void Main(string[] args)
 	{
-		// https://t.me/Tg0Test13_bot
-		if (args.Length != 5)
-		{
-			Console.WriteLine("Ошибка! Аргументов должно быть пять: token, dbConnection, moodPollingDelay, sessionClearDelay, socketPort.");
-		}
-		else
-		{
-            var host = CreateHostBuilder(args).Build();
-            var bot = host.Services.GetRequiredService<Bot>();
-            var token = args[0];
-            bot.StartAsync(token).Wait();
-        }
+		var host = CreateHostBuilder(args).Build();
+        var bot = host.Services.GetRequiredService<Bot>();
+        var token = Environment.GetEnvironmentVariable("TELEGRAM_TOKEN");
+        bot.StartAsync(token).Wait();
     }
 
 	private static IHostBuilder CreateHostBuilder(string[] args)
 	{
-		var databaseConnection = args[1];
-		var moodPollingDelay = Convert.ToInt32(args[2]);
-		var sessionClearDelay = Convert.ToInt32(args[3]);
-		var socketPort = Convert.ToInt32(args[4]);
+		var databaseHost = Environment.GetEnvironmentVariable("DATABASE_HOST");
+		var databasePort = Environment.GetEnvironmentVariable("DATABASE_PORT");
+		var databaseName = Environment.GetEnvironmentVariable("DATABASE_NAME");
+		var databaseUser = Environment.GetEnvironmentVariable("DATABASE_USER");
+		var databasePassword = Environment.GetEnvironmentVariable("DATABASE_PASSWORD");
+
+		var databaseConnection = $"Host={databaseHost};Port={databasePort};Database={databaseName};Username={databaseUser};Password={databasePassword}";
+		var moodPollingDelay = Convert.ToInt32(Environment.GetEnvironmentVariable("MOOD_POLLING_DELAY"));
+		var sessionClearDelay = Convert.ToInt32(Environment.GetEnvironmentVariable("SESSION_CLEAR_DELAY"));
+		var socketPort = Convert.ToInt32(Environment.GetEnvironmentVariable("BOT_PORT"));
 
         var loggerFactory = LoggerFactory.Create(
 			builder => {
