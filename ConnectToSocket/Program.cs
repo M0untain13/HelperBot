@@ -8,11 +8,18 @@ public class Program
 {
 	static void Main(string[] args)
 	{
+		if(args.Length < 1)
+		{
+			Console.WriteLine("Необходим аргумент: порт");
+			return;
+		}
+
+		var port = Convert.ToInt32(args[0]);
 		try
 		{
 			var host = Dns.GetHostEntry(Dns.GetHostName());
 			var address = host.AddressList[0];
-			var endPoint = new IPEndPoint(address, 11111);
+			var endPoint = new IPEndPoint(address, port);
 			var socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			try
 			{
